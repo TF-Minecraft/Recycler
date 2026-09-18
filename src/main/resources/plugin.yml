@@ -1,0 +1,21 @@
+main: net.tfminecraft.recycler.Recycler
+api-version: '1.19'
+name: Recycler
+version: 0.1.0
+author: Drefvelin
+depend: [TLibs, ItemsAdder]
+softdepend: [AdvancedCrafting, GunsAndGadgets, Magic, MMOItems]
+
+commands:
+  recycler:
+    description: Recycler admin commands
+    usage: /recycler reload
+    permission: recycler.admin
+
+permissions:
+  recycler.admin:
+    description: Allows Recycler reload and admin commands
+    default: op
+  recycler.use:
+    description: Allows using the recycling station
+    default: true

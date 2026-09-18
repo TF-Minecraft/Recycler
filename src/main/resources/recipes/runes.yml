@@ -1,0 +1,17 @@
+# Config-provider recipes. input = tlibs path (ItemChecker). outputs = list of "path amount" lines.
+
+recipes:
+  cerrith_runes:
+    input: m.cerrith_runes
+    outputs:
+      - m.currency.enchanted_dust 2
+      
+  oseni_runes:
+    input: m.oseni_runes
+    outputs:
+      - m.currency.enchanted_dust 2
+      
+  seithr_runes:
+    input: m.seithr_runes
+    outputs:
+      - m.currency.enchanted_dust 2

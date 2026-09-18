@@ -1,0 +1,72 @@
+# Recycling station block (TLibs BlockChecker path).
+station:
+  block: iaf(tfmc:recycling_station)
+  permission: recycler.use
+  complete_effects:
+    sound: block.anvil.land
+    sound_volume: 0.55
+    sound_pitch: 0.92
+    extra_sound: none
+    extra_sound_volume: 0.0
+    extra_sound_pitch: 1.0
+    extra_sound_delay_ticks: 0
+    particle: CRIT
+    particle_count: 10
+    particle_radius: 0.35
+    extra_particle: none
+    extra_particle_count: 0
+    extra_particle_radius: 0.0
+  result_spawn:
+    kick_velocity_min: 0.09
+    kick_velocity_max: 0.19
+    kick_horizontal_min: 0.01
+    kick_horizontal_max: 0.03
+    trail_ticks: 140
+    trail_interval_ticks: 2
+    burst_particles: true
+    stagger_ticks: 3
+
+# Maximum material return rate before durability scaling (0.8 = 80% at full durability).
+max_return_rate: 0.8
+
+# Round outputs down (floor). Zero-yield confirms are blocked when true.
+block_confirm_when_zero_yield: true
+
+# Deposit policy (checked before provider resolution).
+deposit:
+  whitelist_mode: false
+  whitelist_paths: []
+  blacklist_paths: []
+  block_unbreakable: true
+
+# Interaction sounds (open, accept, reject, preview, confirm, cancel).
+# Station complete particles/sounds are under station.complete_effects.
+effects:
+  open:
+    sound: block.stone_button.click_on
+    sound_volume: 0.6
+    sound_pitch: 1.0
+  input_accept:
+    sound: entity.item_frame.place
+    sound_volume: 0.5
+    sound_pitch: 1.2
+  input_reject:
+    sound: entity.villager.no
+    sound_volume: 0.8
+    sound_pitch: 1.0
+  preview_refresh:
+    sound: block.grindstone.use
+    sound_volume: 0.3
+    sound_pitch: 1.4
+  confirm:
+    sound: block.anvil.use
+    sound_volume: 0.7
+    sound_pitch: 1.1
+  complete:
+    sound: block.anvil.land
+    sound_volume: 0.55
+    sound_pitch: 0.92
+  cancel:
+    sound: block.note_block.bass
+    sound_volume: 0.8
+    sound_pitch: 0.6

@@ -1,0 +1,7 @@
+# Config-provider recipes. input = tlibs path (ItemChecker). outputs = list of "path amount" lines.
+
+recipes:
+  iron_sword:
+    input: v.iron_sword
+    outputs:
+      - v.iron_ingot 2

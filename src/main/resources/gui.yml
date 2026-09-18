@@ -1,0 +1,5 @@
+# GUI icons only. Slot layout is fixed in GridLayout.java.
+items:
+  confirm_button: ia.mcicons:icon_confirm
+  filler: v.gray_stained_glass_pane
+  arrow_right: ia.mcicons:icon_right_gray

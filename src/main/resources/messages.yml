@@ -1,0 +1,12 @@
+reload:
+  success: "§a[Recycler] Reloaded configs."
+  failed: "§c[Recycler] Reload failed - check console."
+
+station:
+  not_recyclable: "§cThat item cannot be recycled here."
+  blocked: "§cThat item cannot be deposited here."
+  zero_yield: "§cNothing would be returned from recycling this item."
+  recycled: "§aRecycling complete."
+
+escrow:
+  returned: "§7Your item was returned from the recycling station."
