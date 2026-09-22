@@ -42,7 +42,7 @@ public final class RecipeLoader {
         if (item == null || item.getType().isAir() || recipes.isEmpty()) {
             return null;
         }
-        var checker = me.Plugins.TLibs.TLibs.getItemAPI().getChecker();
+        var checker = net.tfminecraft.tlibs.TLibs.getItemAPI().getChecker();
         for (String inputPath : recipes.keySet()) {
             try {
                 if (checker.checkItemWithPath(item, inputPath)) {

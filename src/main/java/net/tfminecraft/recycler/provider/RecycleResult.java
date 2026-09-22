@@ -7,7 +7,7 @@ import java.util.Map;
 
 import org.bukkit.inventory.ItemStack;
 
-import me.Plugins.TLibs.TLibs;
+import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
 /**

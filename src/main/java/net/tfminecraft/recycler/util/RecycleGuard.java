@@ -3,7 +3,7 @@ package net.tfminecraft.recycler.util;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import me.Plugins.TLibs.TLibs;
+import net.tfminecraft.tlibs.TLibs;
 import net.tfminecraft.recycler.Cache;
 
 /**
