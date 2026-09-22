@@ -9,6 +9,9 @@
     <version>0.1.0</version>
 
     <properties>
+        <magic.version>0.1.0</magic.version>
+        <gunsandgadgets.version>1.0.6</gunsandgadgets.version>
+        <advancedcrafting.version>1.2.2</advancedcrafting.version>
         <tlibs.version>1.1.0</tlibs.version>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -38,25 +41,31 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>local</groupId>
-            <artifactId>AdvancedCrafting</artifactId>
-            <version>1.2.1</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/advancedcrafting-1.2.1.jar</systemPath>
+            <groupId>net.tfminecraft</groupId>
+            <artifactId>advancedcrafting</artifactId>
+            <version>${advancedcrafting.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion>
+            </exclusions>
         </dependency>
         <dependency>
-            <groupId>local</groupId>
-            <artifactId>GunsAndGadgets</artifactId>
-            <version>1.0.6</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/gunsandgadgets-1.0.6.jar</systemPath>
+            <groupId>net.tfminecraft</groupId>
+            <artifactId>gunsandgadgets</artifactId>
+            <version>${gunsandgadgets.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion>
+            </exclusions>
         </dependency>
         <dependency>
-            <groupId>local</groupId>
-            <artifactId>Magic</artifactId>
-            <version>0.1.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/magic-0.1.0.jar</systemPath>
+            <groupId>net.tfminecraft</groupId>
+            <artifactId>magic</artifactId>
+            <version>${magic.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>local</groupId>
