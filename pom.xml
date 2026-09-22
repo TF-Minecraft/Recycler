@@ -11,6 +11,7 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.proc>full</maven.compiler.proc>
         <advancedcrafting.version>2.0.0</advancedcrafting.version>
         <gunsandgadgets.version>2.0.0</gunsandgadgets.version>
         <magic.version>0.2.0</magic.version>
