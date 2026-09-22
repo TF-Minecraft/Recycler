@@ -7,13 +7,13 @@ import java.util.Map;
 
 import org.bukkit.inventory.ItemStack;
 
-import net.tfminecraft.AdvancedCrafting.Loaders.IngredientLoader;
-import net.tfminecraft.AdvancedCrafting.Managers.AlloyManager;
-import net.tfminecraft.AdvancedCrafting.Objects.Alloys.Alloy;
-import net.tfminecraft.AdvancedCrafting.Objects.Data.AlloyRecipe;
-import net.tfminecraft.AdvancedCrafting.Objects.Data.CraftInput;
-import net.tfminecraft.AdvancedCrafting.Objects.Data.CraftProvenance;
-import net.tfminecraft.AdvancedCrafting.Objects.Ingredients.Ingredient;
+import net.tfminecraft.advancedcrafting.loaders.IngredientLoader;
+import net.tfminecraft.advancedcrafting.managers.AlloyManager;
+import net.tfminecraft.advancedcrafting.objects.alloys.Alloy;
+import net.tfminecraft.advancedcrafting.objects.data.AlloyRecipe;
+import net.tfminecraft.advancedcrafting.objects.data.CraftInput;
+import net.tfminecraft.advancedcrafting.objects.data.CraftProvenance;
+import net.tfminecraft.advancedcrafting.objects.ingredients.Ingredient;
 import net.tfminecraft.recycler.Recycler;
 import net.tfminecraft.recycler.model.RecycleOutput;
 

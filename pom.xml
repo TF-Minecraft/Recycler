@@ -11,10 +11,10 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <advancedcrafting.version>1.2.3</advancedcrafting.version>
-        <gunsandgadgets.version>1.0.7</gunsandgadgets.version>
-        <magic.version>0.1.0</magic.version>
-        <tlibs.version>1.1.1</tlibs.version>
+        <advancedcrafting.version>2.0.0</advancedcrafting.version>
+        <gunsandgadgets.version>2.0.0</gunsandgadgets.version>
+        <magic.version>0.2.0</magic.version>
+        <tlibs.version>2.0.0</tlibs.version>
     </properties>
 
     <dependencies>
