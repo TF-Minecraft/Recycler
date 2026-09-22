@@ -1,7 +1,7 @@
 main: net.tfminecraft.recycler.Recycler
 api-version: '1.19'
 name: Recycler
-version: 0.1.0
+version: ${project.version}
 author: Drefvelin
 depend: [TLibs, ItemsAdder]
 softdepend: [AdvancedCrafting, GunsAndGadgets, Magic, MMOItems]
