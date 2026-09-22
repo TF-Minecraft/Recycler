@@ -18,6 +18,7 @@ import org.bukkit.inventory.ItemStack;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 import net.tfminecraft.recycler.Messages;
 import net.tfminecraft.recycler.Recycler;
@@ -236,7 +237,7 @@ public final class EscrowManager {
             return null;
         }
         try (FileReader reader = new FileReader(file, StandardCharsets.UTF_8)) {
-            Map<String, Object> map = GSON.fromJson(reader, Map.class);
+            Map<String, Object> map = GSON.fromJson(reader, new TypeToken<Map<String, Object>>() {}.getType());
             if (map == null) {
                 return null;
             }
