@@ -22,6 +22,8 @@ public final class ResultSpawnEffects {
     /**
      * Spawns the result item above the station block with upward velocity and a crit trail.
      */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public static boolean spawnAtStation(Location blockLoc, ItemStack item) {
         if (blockLoc == null || blockLoc.getWorld() == null || item == null || item.getType().isAir()) {
             return false;
@@ -78,6 +80,8 @@ public final class ResultSpawnEffects {
         return "§f" + item.getAmount() + "x " + displayNameOf(item);
     }
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     private static String displayNameOf(ItemStack item) {
         if (item == null) {
             return "Item";

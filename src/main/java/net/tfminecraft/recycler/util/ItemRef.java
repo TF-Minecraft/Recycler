@@ -45,6 +45,8 @@ public final class ItemRef {
     }
 
     /** Gray glass and other GUI fillers: no visible name or lore. */
+    // Preserve the existing additional-tooltip component selection and legacy item text; hiding the whole tooltip is different.
+    @SuppressWarnings({"deprecation"})
     public static void applyBlankDisplay(ItemStack item) {
         if (item == null) {
             return;

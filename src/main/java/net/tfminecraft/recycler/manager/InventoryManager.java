@@ -25,6 +25,8 @@ public final class InventoryManager {
         this.providerChain = providerChain;
     }
 
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
     public void openMain(Player player, RecycleSession session) {
         RecyclerGuiHolder holder = new RecyclerGuiHolder();
         var inv = Recycler.plugin.getServer().createInventory(holder, GridLayout.SIZE, RecyclerGuiHolder.TITLE);
