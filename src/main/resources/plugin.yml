@@ -1,5 +1,5 @@
 main: net.tfminecraft.recycler.Recycler
-api-version: '1.19'
+api-version: '1.21.10'
 name: Recycler
 version: ${project.version}
 author: Drefvelin
