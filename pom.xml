@@ -81,23 +81,20 @@
         <dependency>
             <groupId>local</groupId>
             <artifactId>ItemsAdder</artifactId>
-            <version>3.5.0</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/ItemsAdder_3.5.0-r2.jar</systemPath>
+            <version>3.5.0-tfmc-0116d714822b</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>MMOItems</artifactId>
-            <version>6.10</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/MMOItems-6.10.jar</systemPath>
+            <version>6.10-tfmc-c84700df5942</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>local</groupId>
             <artifactId>MythicLib</artifactId>
-            <version>1.7</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/MythicLib-1.7.jar</systemPath>
+            <version>1.7-tfmc-660ff2a6ec86</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
