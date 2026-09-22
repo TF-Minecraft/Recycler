@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>net.tfminecraft</groupId>
@@ -9,20 +9,13 @@
     <version>0.1.0</version>
 
     <properties>
-        <magic.version>0.1.0</magic.version>
-        <gunsandgadgets.version>1.0.7</gunsandgadgets.version>
-        <advancedcrafting.version>1.2.3</advancedcrafting.version>
-        <tlibs.version>1.1.1</tlibs.version>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <advancedcrafting.version>1.2.3</advancedcrafting.version>
+        <gunsandgadgets.version>1.0.7</gunsandgadgets.version>
+        <magic.version>0.1.0</magic.version>
+        <tlibs.version>1.1.1</tlibs.version>
     </properties>
-
-    <repositories>
-        <repository>
-            <id>spigot-snapshots</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
 
     <dependencies>
         <dependency>
@@ -35,7 +28,6 @@
             <artifactId>spigot-api</artifactId>
             <version>1.21.10-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
-
         </dependency>
         <dependency>
             <groupId>me.plugins</groupId>
@@ -44,7 +36,10 @@
             <scope>provided</scope>
             <exclusions>
                 <!-- The server supplies TLibs and its integrations. -->
-                <exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -53,7 +48,10 @@
             <version>${advancedcrafting.version}</version>
             <scope>provided</scope>
             <exclusions>
-                <exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -62,7 +60,10 @@
             <version>${gunsandgadgets.version}</version>
             <scope>provided</scope>
             <exclusions>
-                <exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -71,7 +72,10 @@
             <version>${magic.version}</version>
             <scope>provided</scope>
             <exclusions>
-                <exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -97,17 +101,28 @@
         </dependency>
     </dependencies>
 
+    <repositories>
+        <repository>
+            <id>spigot-snapshots</id>
+            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+        </repository>
+    </repositories>
+
     <build>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
-                <includes><include>plugin.yml</include></includes>
+                <includes>
+                    <include>plugin.yml</include>
+                </includes>
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>false</filtering>
-                <excludes><exclude>plugin.yml</exclude></excludes>
+                <excludes>
+                    <exclude>plugin.yml</exclude>
+                </excludes>
             </resource>
         </resources>
         <plugins>
