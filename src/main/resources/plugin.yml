@@ -4,7 +4,7 @@ name: Recycler
 version: ${project.version}
 author: Drefvelin
 depend: [TLibs, ItemsAdder]
-softdepend: [AdvancedCrafting, GunsAndGadgets, Magic, MMOItems]
+softdepend: [AdvancedCrafting, GemInfusion, GunsAndGadgets, Magic, MMOItems]
 
 commands:
   recycler:

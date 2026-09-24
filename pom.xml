@@ -13,6 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.proc>full</maven.compiler.proc>
         <advancedcrafting.version>2.0.0</advancedcrafting.version>
+        <geminfusion.version>2.2.3</geminfusion.version>
         <gunsandgadgets.version>2.0.0</gunsandgadgets.version>
         <magic.version>0.2.0</magic.version>
         <tlibs.version>2.0.0</tlibs.version>
@@ -47,6 +48,18 @@
             <groupId>net.tfminecraft</groupId>
             <artifactId>advancedcrafting</artifactId>
             <version>${advancedcrafting.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>me.plugins</groupId>
+            <artifactId>geminfusion</artifactId>
+            <version>${geminfusion.version}</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
