@@ -11,7 +11,7 @@ import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.util.DurabilityScaler;
 
 /**
- * Ordered provider chain: AdvancedCrafting, Magic, GunsAndGadgets, then config fallback.
+ * Ordered provider chain: AdvancedCrafting, Magic, GunsAndGadgets, goldsmithing, then config fallback.
  */
 public final class RecycleProviderChain {
 
@@ -27,6 +27,9 @@ public final class RecycleProviderChain {
         }
         if (Bukkit.getPluginManager().isPluginEnabled("GunsAndGadgets")) {
             providers.add(new GunsAndGadgetsProvider());
+        }
+        if (Bukkit.getPluginManager().isPluginEnabled("GemInfusion")) {
+            providers.add(new GoldsmithProvider());
         }
         providers.add(new ConfigProvider());
         providers.sort(Comparator.comparingInt(RecycleProvider::priority));
