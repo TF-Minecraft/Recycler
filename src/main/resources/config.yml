@@ -29,6 +29,11 @@ station:
 # Maximum material return rate before durability scaling (0.8 = 80% at full durability).
 max_return_rate: 0.8
 
+# AdvancedCrafting alloy scrap returns the base metal its failed forge used.
+# Base metal returned per scrap (0.5 = 1 base metal per 2 scrap). max_return_rate does not apply to scrap.
+# Scrap forged before AdvancedCrafting 2.2.0 has no recorded base and cannot be recycled.
+scrap_return_rate: 0.5
+
 # Round outputs down (floor). Zero-yield confirms are blocked when true.
 block_confirm_when_zero_yield: true
 

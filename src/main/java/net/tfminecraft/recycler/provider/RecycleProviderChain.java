@@ -7,11 +7,10 @@ import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 
-import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.util.DurabilityScaler;
 
 /**
- * Ordered provider chain: AdvancedCrafting, Magic, GunsAndGadgets, goldsmithing, then config fallback.
+ * Ordered provider chain: AdvancedCrafting, alloy scrap, Magic, GunsAndGadgets, goldsmithing, then config fallback.
  */
 public final class RecycleProviderChain {
 
@@ -21,6 +20,7 @@ public final class RecycleProviderChain {
         providers.clear();
         if (Bukkit.getPluginManager().isPluginEnabled("AdvancedCrafting")) {
             providers.add(new AdvancedCraftingProvider());
+            providers.add(new AlloyScrapProvider());
         }
         if (Bukkit.getPluginManager().isPluginEnabled("Magic")) {
             providers.add(new MagicGearProvider());
@@ -47,8 +47,7 @@ public final class RecycleProviderChain {
             if (base.isEmpty()) {
                 continue;
             }
-            double returnRate = provider.appliesMaxReturnRate() ? Cache.maxReturnRate : 1.0;
-            RecycleContext ctx = RecycleContext.of(item, returnRate, DurabilityScaler.factor(item));
+            RecycleContext ctx = RecycleContext.of(item, provider.returnRate(), DurabilityScaler.factor(item));
             return RecycleResult.of(providerName(provider), base, ctx);
         }
         return RecycleResult.notHandled();

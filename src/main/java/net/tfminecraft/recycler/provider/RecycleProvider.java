@@ -2,6 +2,7 @@ package net.tfminecraft.recycler.provider;
 
 import org.bukkit.inventory.ItemStack;
 
+import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
 import java.util.List;
@@ -29,5 +30,12 @@ public interface RecycleProvider {
      */
     default boolean appliesMaxReturnRate() {
         return true;
+    }
+
+    /**
+     * Rate applied to base outputs before durability scaling.
+     */
+    default double returnRate() {
+        return appliesMaxReturnRate() ? Cache.maxReturnRate : 1.0;
     }
 }

@@ -38,6 +38,7 @@ public final class ConfigLoader implements LoaderInterface {
         }
 
         Cache.maxReturnRate = config.getDouble("max_return_rate", Cache.maxReturnRate);
+        Cache.scrapReturnRate = config.getDouble("scrap_return_rate", Cache.scrapReturnRate);
         Cache.blockConfirmWhenZeroYield = config.getBoolean("block_confirm_when_zero_yield",
                 Cache.blockConfirmWhenZeroYield);
 
