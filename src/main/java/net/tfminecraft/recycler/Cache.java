@@ -14,6 +14,7 @@ public final class Cache {
     public static String stationPermission = "recycler.use";
 
     public static double maxReturnRate = 0.8;
+    public static double scrapReturnRate = 0.5;
     public static boolean blockConfirmWhenZeroYield = true;
 
     public static boolean depositWhitelistMode = false;
