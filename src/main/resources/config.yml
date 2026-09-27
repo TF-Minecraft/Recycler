@@ -30,7 +30,7 @@ station:
 max_return_rate: 0.8
 
 # AdvancedCrafting alloy scrap returns the base metal its failed forge used.
-# Base metal returned per scrap (0.5 = 1 base metal per 2 scrap). max_return_rate does not apply to scrap.
+# Base metal returned per scrap, 0.0-1.0 (0.5 = 1 base metal per 2 scrap). max_return_rate does not apply to scrap.
 # Scrap forged before AdvancedCrafting 2.2.0 has no recorded base and cannot be recycled.
 scrap_return_rate: 0.5
 

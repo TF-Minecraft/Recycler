@@ -38,7 +38,15 @@ public final class ConfigLoader implements LoaderInterface {
         }
 
         Cache.maxReturnRate = config.getDouble("max_return_rate", Cache.maxReturnRate);
-        Cache.scrapReturnRate = config.getDouble("scrap_return_rate", Cache.scrapReturnRate);
+        double scrapReturnRate = config.getDouble("scrap_return_rate", Cache.scrapReturnRate);
+        if (!Double.isFinite(scrapReturnRate) || scrapReturnRate < 0.0 || scrapReturnRate > 1.0) {
+            double clamped = Double.isFinite(scrapReturnRate) ? Math.max(0.0, Math.min(1.0, scrapReturnRate))
+                    : Cache.scrapReturnRate;
+            Recycler.plugin.getLogger().warning("[Recycler] scrap_return_rate must be between 0.0 and 1.0; using "
+                    + clamped + " instead of " + scrapReturnRate);
+            scrapReturnRate = clamped;
+        }
+        Cache.scrapReturnRate = scrapReturnRate;
         Cache.blockConfirmWhenZeroYield = config.getBoolean("block_confirm_when_zero_yield",
                 Cache.blockConfirmWhenZeroYield);
 
