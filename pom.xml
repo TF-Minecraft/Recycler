@@ -13,9 +13,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.proc>full</maven.compiler.proc>
         <advancedcrafting.version>2.2.0</advancedcrafting.version>
-        <geminfusion.version>2.2.3</geminfusion.version>
-        <gunsandgadgets.version>2.0.0</gunsandgadgets.version>
-        <magic.version>0.2.0</magic.version>
+        <geminfusion.version>2.2.5</geminfusion.version>
+        <gunsandgadgets.version>2.0.6</gunsandgadgets.version>
+        <magic.version>0.4.6</magic.version>
         <tlibs.version>2.0.0</tlibs.version>
     </properties>
 

@@ -14,6 +14,7 @@ import net.tfminecraft.advancedcrafting.objects.data.AlloyRecipe;
 import net.tfminecraft.advancedcrafting.objects.data.CraftInput;
 import net.tfminecraft.advancedcrafting.objects.data.CraftProvenance;
 import net.tfminecraft.advancedcrafting.objects.ingredients.Ingredient;
+import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.Recycler;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
@@ -26,6 +27,11 @@ public final class AdvancedCraftingProvider implements RecycleProvider {
     @Override
     public int priority() {
         return 10;
+    }
+
+    @Override
+    public double returnRate() {
+        return Cache.advancedCraftingReturnRate;
     }
 
     @Override

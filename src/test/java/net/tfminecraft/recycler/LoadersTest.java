@@ -22,7 +22,12 @@ class LoadersTest extends TestSupport {
       Files.copy(getClass().getResourceAsStream("/" + name), dir.resolve(name));
     loader.load(dir.resolve("config.yml").toFile());
     gui.load(dir.resolve("gui.yml").toFile());
-    assertEquals(.8, Cache.maxReturnRate);
+    assertEquals(.8, Cache.advancedCraftingReturnRate);
+    assertEquals(.5, Cache.scrapReturnRate);
+    assertEquals(.8, Cache.magicGearReturnRate);
+    assertEquals(.8, Cache.gunsReturnRate);
+    assertEquals(.8, Cache.goldsmithReturnRate);
+    assertEquals(1, Cache.recipeReturnRate);
     assertEquals("world", Messages.get("hello"));
     assertFalse(loader.loadSafe(dir.resolve("missing").toFile()));
     assertFalse(gui.loadSafe(dir.resolve("missing").toFile()));
@@ -36,6 +41,23 @@ class LoadersTest extends TestSupport {
       assertTrue(Double.isFinite(Cache.scrapReturnRate));
       assertTrue(Cache.scrapReturnRate >= 0 && Cache.scrapReturnRate <= 1);
     }
+    loader.loadSafe(
+        yaml(
+                "rates.yml",
+                "return_rates:\n  advanced_crafting: 0.7\n  alloy_scrap: 0.25\n  magic_gear: 0.6\n"
+                    + "  guns: 5\n  goldsmith_jewelry: .NaN\n  recipes: 0.9\n")
+            .toFile());
+    assertEquals(.7, Cache.advancedCraftingReturnRate);
+    assertEquals(.25, Cache.scrapReturnRate);
+    assertEquals(.6, Cache.magicGearReturnRate);
+    assertEquals(1, Cache.gunsReturnRate);
+    assertEquals(.8, Cache.goldsmithReturnRate);
+    assertEquals(.9, Cache.recipeReturnRate);
+    loader.loadSafe(yaml("legacy.yml", "max_return_rate: 0.6\n").toFile());
+    assertEquals(.6, Cache.advancedCraftingReturnRate, "Old max_return_rate still applies");
+    assertEquals(.6, Cache.goldsmithReturnRate);
+    assertEquals(.5, Cache.scrapReturnRate);
+    assertEquals(1, Cache.recipeReturnRate);
     for (String effect :
         List.of(
             "open",

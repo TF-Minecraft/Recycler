@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.bukkit.inventory.ItemStack;
 
+import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.loader.RecipeLoader;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
@@ -20,8 +21,8 @@ public final class ConfigProvider implements RecycleProvider {
     }
 
     @Override
-    public boolean appliesMaxReturnRate() {
-        return false;
+    public double returnRate() {
+        return Cache.recipeReturnRate;
     }
 
     @Override

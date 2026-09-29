@@ -15,6 +15,10 @@ import net.tfminecraft.recycler.Recycler;
 
 public final class ConfigLoader implements LoaderInterface {
 
+    private static final double DEFAULT_CRAFTED_RATE = 0.8;
+    private static final double DEFAULT_SCRAP_RATE = 0.5;
+    private static final double DEFAULT_RECIPE_RATE = 1.0;
+
     @Override
     public void load(File configFile) {
         loadSafe(configFile);
@@ -37,16 +41,16 @@ public final class ConfigLoader implements LoaderInterface {
             applyResultSpawn(station.getConfigurationSection("result_spawn"));
         }
 
-        Cache.maxReturnRate = config.getDouble("max_return_rate", Cache.maxReturnRate);
-        double scrapReturnRate = config.getDouble("scrap_return_rate", Cache.scrapReturnRate);
-        if (!Double.isFinite(scrapReturnRate) || scrapReturnRate < 0.0 || scrapReturnRate > 1.0) {
-            double clamped = Double.isFinite(scrapReturnRate) ? Math.max(0.0, Math.min(1.0, scrapReturnRate))
-                    : Cache.scrapReturnRate;
-            Recycler.plugin.getLogger().warning("[Recycler] scrap_return_rate must be between 0.0 and 1.0; using "
-                    + clamped + " instead of " + scrapReturnRate);
-            scrapReturnRate = clamped;
-        }
-        Cache.scrapReturnRate = scrapReturnRate;
+        // Legacy keys: max_return_rate covered every crafted item, scrap_return_rate only scrap.
+        double craftedFallback = config.getDouble("max_return_rate", DEFAULT_CRAFTED_RATE);
+        double scrapFallback = config.getDouble("scrap_return_rate", DEFAULT_SCRAP_RATE);
+        ConfigurationSection rates = config.getConfigurationSection("return_rates");
+        Cache.advancedCraftingReturnRate = readRate(rates, "advanced_crafting", craftedFallback, DEFAULT_CRAFTED_RATE);
+        Cache.scrapReturnRate = readRate(rates, "alloy_scrap", scrapFallback, DEFAULT_SCRAP_RATE);
+        Cache.magicGearReturnRate = readRate(rates, "magic_gear", craftedFallback, DEFAULT_CRAFTED_RATE);
+        Cache.gunsReturnRate = readRate(rates, "guns", craftedFallback, DEFAULT_CRAFTED_RATE);
+        Cache.goldsmithReturnRate = readRate(rates, "goldsmith_jewelry", craftedFallback, DEFAULT_CRAFTED_RATE);
+        Cache.recipeReturnRate = readRate(rates, "recipes", DEFAULT_RECIPE_RATE, DEFAULT_RECIPE_RATE);
         Cache.blockConfirmWhenZeroYield = config.getBoolean("block_confirm_when_zero_yield",
                 Cache.blockConfirmWhenZeroYield);
 
@@ -97,6 +101,20 @@ public final class ConfigLoader implements LoaderInterface {
 
         Messages.load(new File(Recycler.plugin.getDataFolder(), "messages.yml"));
         return true;
+    }
+
+    /**
+     * Reads return_rates.key (or the legacy fallback), clamped to 0.0-1.0. Non-finite values use the default.
+     */
+    private static double readRate(ConfigurationSection rates, String key, double fallback, double defaultRate) {
+        double rate = rates != null ? rates.getDouble(key, fallback) : fallback;
+        if (Double.isFinite(rate) && rate >= 0.0 && rate <= 1.0) {
+            return rate;
+        }
+        double clamped = Double.isFinite(rate) ? Math.max(0.0, Math.min(1.0, rate)) : defaultRate;
+        Recycler.plugin.getLogger().warning("[Recycler] return_rates." + key
+                + " must be between 0.0 and 1.0; using " + clamped + " instead of " + rate);
+        return clamped;
     }
 
     private static void applyEffect(ConfigurationSection section,
