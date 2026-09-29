@@ -213,7 +213,7 @@ public final class RecyclerManager implements Listener {
     }
 
     private void spawnOutputsStaggered(Location stationLoc, List<ItemStack> outputs) {
-        if (outputs == null || outputs.isEmpty()) {
+        if (outputs.isEmpty()) {
             return;
         }
         int stagger = Math.max(1, Cache.resultSpawnStaggerTicks);
@@ -234,14 +234,7 @@ public final class RecyclerManager implements Listener {
 
     private void handleDepositFromPlayer(InventoryClickEvent event, Player player, RecycleSession session) {
         Inventory clickedInventory = event.getClickedInventory();
-        if (clickedInventory == null) {
-            return;
-        }
-
         ItemStack stack = event.getCurrentItem();
-        if (stack == null || stack.getType() == Material.AIR) {
-            return;
-        }
 
         if (RecycleGuard.isBlocked(stack)) {
             player.sendMessage(Messages.get("station.blocked"));

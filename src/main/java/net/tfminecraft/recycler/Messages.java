@@ -30,13 +30,16 @@ public final class Messages {
     }
 
     public static void loadFromResources() {
-        try (InputStream in = Recycler.plugin.getResource("messages.yml")) {
-            if (in == null) {
+        try {
+            InputStream resource = Recycler.plugin.getResource("messages.yml");
+            if (resource == null) {
                 return;
             }
-            FileConfiguration loaded = new YamlConfiguration();
-            loaded.loadFromString(new String(in.readAllBytes()));
-            config = loaded;
+            try (InputStream in = resource) {
+                FileConfiguration loaded = new YamlConfiguration();
+                loaded.loadFromString(new String(in.readAllBytes()));
+                config = loaded;
+            }
         } catch (Exception ex) {
             Recycler.plugin.getLogger().warning("[Recycler] Failed to load bundled messages.yml: " + ex.getMessage());
         }

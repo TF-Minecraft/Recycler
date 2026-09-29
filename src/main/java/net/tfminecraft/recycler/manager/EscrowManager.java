@@ -5,7 +5,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -83,10 +82,10 @@ public final class EscrowManager {
         if (item == null) {
             item = loadEscrowFile(id);
         }
-        deleteFile(escrowFile(id));
         if (item == null || item.getType().isAir()) {
             return;
         }
+        deleteFile(escrowFile(id));
         ItemGive.giveOrDrop(player, item);
         if (notify) {
             player.sendMessage(Messages.get("escrow.returned"));
@@ -107,7 +106,7 @@ public final class EscrowManager {
     }
 
     public boolean hasPending(UUID playerId) {
-        return pendingFile(playerId).exists();
+        return pendingFiles(playerId).length > 0;
     }
 
     public List<UUID> listMemoryEscrowPlayerIds() {
@@ -129,20 +128,17 @@ public final class EscrowManager {
         List<UUID> ids = new ArrayList<>();
         for (File file : files) {
             String name = file.getName();
-            if (!name.endsWith(".json")) {
-                continue;
-            }
             try {
-                ids.add(UUID.fromString(name.substring(0, name.length() - 5)));
-            } catch (IllegalArgumentException ex) {
+                ids.add(UUID.fromString(name.substring(0, 36)));
+            } catch (IllegalArgumentException | IndexOutOfBoundsException ex) {
                 Recycler.plugin.getLogger().warning("[Recycler] Ignoring invalid pending file name: " + name);
             }
         }
-        return ids;
+        return ids.stream().distinct().toList();
     }
 
     public int countPendingFiles() {
-        return listPendingPlayerIds().size();
+        return listPendingPlayerIds().stream().mapToInt(id -> pendingFiles(id).length).sum();
     }
 
     public void adminReturn(Player player) {
@@ -164,17 +160,23 @@ public final class EscrowManager {
         if (player == null) {
             return;
         }
-        File file = pendingFile(player.getUniqueId());
-        if (!file.exists()) {
-            return;
+        for (File file : pendingFiles(player.getUniqueId())) {
+            ItemStack item = loadItemStackFile(file);
+            // Keep unreadable files available for administrator recovery.
+            if (item == null || item.getType().isAir()) {
+                continue;
+            }
+            deleteFile(file);
+            ItemGive.giveOrDrop(player, item);
+            player.sendMessage(Messages.get("escrow.returned"));
         }
-        ItemStack item = loadItemStackFile(file);
-        deleteFile(file);
-        if (item == null || item.getType().isAir()) {
-            return;
-        }
-        ItemGive.giveOrDrop(player, item);
-        player.sendMessage(Messages.get("escrow.returned"));
+    }
+
+    private File[] pendingFiles(UUID playerId) {
+        File[] files = pendingFolder.listFiles((dir, name) ->
+                name.equals(playerId + ".json") ||
+                (name.startsWith(playerId + "-") && name.endsWith(".json")));
+        return files == null ? new File[0] : files;
     }
 
     private void moveAllEscrowFilesToPending() {
@@ -196,13 +198,13 @@ public final class EscrowManager {
         }
         File dest = new File(pendingFolder, source.getName());
         if (dest.exists()) {
-            deleteFile(dest);
+            dest = new File(pendingFolder, source.getName().replace(".json", "-" + UUID.randomUUID() + ".json"));
         }
         if (source.renameTo(dest)) {
             return;
         }
         try {
-            Files.copy(source.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(source.toPath(), dest.toPath());
             deleteFile(source);
         } catch (Exception ex) {
             Recycler.plugin.getLogger().warning("[Recycler] Failed to move escrow file " + source.getName()
@@ -212,10 +214,6 @@ public final class EscrowManager {
 
     private File escrowFile(UUID playerId) {
         return new File(escrowFolder, playerId.toString() + ".json");
-    }
-
-    private File pendingFile(UUID playerId) {
-        return new File(pendingFolder, playerId.toString() + ".json");
     }
 
     private void saveEscrowFile(UUID playerId, ItemStack item) {

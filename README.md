@@ -22,6 +22,12 @@ It connects several crafting systems to a shared recycling experience, helping s
 
 Technical documentation is maintained in [TF-Minecraft/Docs](https://github.com/TF-Minecraft/Docs).
 
+## Tests and coverage
+
+Run `mvn -B --no-transfer-progress clean verify` with Java 21 and the pinned plugin dependencies installed by `.github/scripts/prepare-release.sh` and the shared CI setup action. The suite uses JUnit 5, Mockito and MockBukkit to exercise configuration, integration providers, inventory events, escrow persistence/recovery, commands, plugin lifecycle and scheduled effects.
+
+JaCoCo requires **100% line, branch and instruction coverage** across all production classes, with no exclusions. Reports are written to `target/site/jacoco/index.html` and `target/site/jacoco/jacoco.xml`; build and release CI publish the reports. Mocked external plugin APIs do not replace testing on a real Minecraft server.
+
 ## License
 
 Copyright (c) 2026 TF-Minecraft contributors.

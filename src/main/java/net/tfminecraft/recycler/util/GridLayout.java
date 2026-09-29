@@ -41,7 +41,7 @@ public final class GridLayout {
         RESERVED_SLOTS.addAll(ARROW_SLOTS);
         for (int slot = 0; slot < SIZE; slot++) {
             int col = slot % COLUMNS;
-            if (col >= PREVIEW_COL_START && col <= PREVIEW_COL_END) {
+            if (col >= PREVIEW_COL_START) {
                 PREVIEW_SLOTS.add(slot);
             }
         }
