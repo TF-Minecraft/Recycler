@@ -94,7 +94,7 @@ public final class InventoryManager {
                 break;
             }
             var stack = ItemRef.build(output.itemPath());
-            if (stack == null || stack.getType().isAir()) {
+            if (stack == null) {
                 continue;
             }
             stack.setAmount(Math.min(64, output.baseAmount()));

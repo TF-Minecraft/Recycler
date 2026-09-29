@@ -50,13 +50,17 @@ public final class ResultSpawnEffects {
     private static void kickUp(Item ent, ThreadLocalRandom rng) {
         double vx = randomSigned(rng, Cache.resultSpawnKickHorizontalMin, Cache.resultSpawnKickHorizontalMax);
         double vz = randomSigned(rng, Cache.resultSpawnKickHorizontalMin, Cache.resultSpawnKickHorizontalMax);
-        double vy = rng.nextDouble(Cache.resultSpawnKickVelocityMin, Cache.resultSpawnKickVelocityMax);
+        double vy = randomRange(rng, Cache.resultSpawnKickVelocityMin, Cache.resultSpawnKickVelocityMax);
         ent.setVelocity(new Vector(vx, vy, vz));
     }
 
     private static double randomSigned(ThreadLocalRandom rng, double min, double max) {
-        double v = rng.nextDouble(min, max);
+        double v = randomRange(rng, min, max);
         return rng.nextBoolean() ? v : -v;
+    }
+
+    private static double randomRange(ThreadLocalRandom rng, double min, double max) {
+        return min == max ? min : rng.nextDouble(min, max);
     }
 
     private static void startCritTrail(Entity entity, int maxTicks, int intervalTicks) {
@@ -66,7 +70,7 @@ public final class ResultSpawnEffects {
 
             @Override
             public void run() {
-                if (entity == null || !entity.isValid() || entity.isDead() || t++ >= maxTicks) {
+                if (!entity.isValid() || entity.isDead() || t++ >= maxTicks) {
                     cancel();
                     return;
                 }
@@ -83,9 +87,6 @@ public final class ResultSpawnEffects {
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
     private static String displayNameOf(ItemStack item) {
-        if (item == null) {
-            return "Item";
-        }
         var meta = item.getItemMeta();
         if (meta != null && meta.hasDisplayName()) {
             return meta.getDisplayName();

@@ -66,9 +66,6 @@ public final class StationCompleteEffects {
     }
 
     private static Particle parseParticle(String name) {
-        if (name == null || name.isBlank()) {
-            return null;
-        }
         try {
             return Particle.valueOf(name.trim().toUpperCase());
         } catch (IllegalArgumentException ex) {

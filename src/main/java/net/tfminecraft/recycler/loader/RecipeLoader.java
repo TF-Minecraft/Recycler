@@ -113,7 +113,7 @@ public final class RecipeLoader {
      */
     private void loadLegacyPathRecipes(ConfigurationSection section, String pathPrefix, String fileName) {
         ConfigurationSection outputsSection = section.getConfigurationSection("outputs");
-        if (outputsSection != null && !section.isList("outputs")) {
+        if (outputsSection != null) {
             Map<String, Integer> map = readOutputsMap(outputsSection);
             if (!map.isEmpty()) {
                 recipes.put(normalize(pathPrefix), map);
@@ -138,7 +138,7 @@ public final class RecipeLoader {
 
     private Map<String, Integer> readOutputs(ConfigurationSection recipe, String recipeId, String fileName) {
         List<String> lines = recipe.getStringList("outputs");
-        if (lines != null && !lines.isEmpty()) {
+        if (!lines.isEmpty()) {
             return parseOutputLines(lines, recipeId, fileName);
         }
         ConfigurationSection outputsSection = recipe.getConfigurationSection("outputs");
@@ -151,7 +151,7 @@ public final class RecipeLoader {
     private Map<String, Integer> parseOutputLines(List<String> lines, String recipeId, String fileName) {
         Map<String, Integer> map = new HashMap<>();
         for (String line : lines) {
-            if (line == null || line.isBlank()) {
+            if (line.isBlank()) {
                 continue;
             }
             parseOutputLine(line.trim(), map, recipeId, fileName);
@@ -193,7 +193,7 @@ public final class RecipeLoader {
                 return;
             }
         }
-        if (path.isBlank() || amount <= 0) {
+        if (amount <= 0) {
             Recycler.plugin.getLogger().warning("[Recycler] Recipe '" + recipeId + "' ignored output '"
                     + line + "' in " + fileName);
             return;

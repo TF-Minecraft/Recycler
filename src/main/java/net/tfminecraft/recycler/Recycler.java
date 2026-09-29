@@ -126,12 +126,15 @@ public class Recycler extends JavaPlugin {
             return;
         }
         target.getParentFile().mkdirs();
-        try (InputStream in = getResource(relativePath)) {
-            if (in == null) {
+        try {
+            InputStream resource = getResource(relativePath);
+            if (resource == null) {
                 getLogger().warning("Missing bundled resource: " + relativePath);
                 return;
             }
-            Files.copy(in, target.toPath());
+            try (InputStream in = resource) {
+                Files.copy(in, target.toPath());
+            }
         } catch (IOException ex) {
             getLogger().severe("Failed to copy default resource " + relativePath + ": " + ex.getMessage());
         }
