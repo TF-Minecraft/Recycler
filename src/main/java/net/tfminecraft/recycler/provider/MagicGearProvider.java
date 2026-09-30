@@ -1,6 +1,5 @@
 package net.tfminecraft.recycler.provider;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -12,19 +11,25 @@ import net.Indyuce.mmoitems.api.item.mmoitem.LiveMMOItem;
 import net.Indyuce.mmoitems.stat.data.GemSocketsData;
 import net.Indyuce.mmoitems.stat.data.type.StatData;
 import net.tfminecraft.magic.gear.GearBrokenMarker;
-import net.tfminecraft.magic.gear.GearCosts;
 import net.tfminecraft.magic.gear.GearProvenance;
+import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
 /**
- * Reads the stamped part list off a crafted mage weapon and sums the live part costs.
+ * Returns the materials Magic recorded as charged when the mage weapon was crafted.
  * Resonance and any charge that went into the weapon are not returned, only materials.
+ * Weapons crafted before Magic recorded them, and broken weapons, are not handled.
  */
 public final class MagicGearProvider implements RecycleProvider {
 
     @Override
     public int priority() {
         return 15;
+    }
+
+    @Override
+    public double returnRate() {
+        return Cache.magicGearReturnRate;
     }
 
     @Override
@@ -35,7 +40,7 @@ public final class MagicGearProvider implements RecycleProvider {
         if (GearBrokenMarker.isBroken(item)) {
             return false;
         }
-        if (!GearProvenance.missingPartIds(item).isEmpty()) {
+        if (GearProvenance.readInputs(item) == null) {
             return false;
         }
         // There is no unsocket flow, so recycling a socketed weapon would destroy the
@@ -45,16 +50,11 @@ public final class MagicGearProvider implements RecycleProvider {
 
     @Override
     public List<RecycleOutput> resolveBaseOutputs(ItemStack item) {
-        if (!GearProvenance.isGear(item)) {
+        Map<String, Integer> used = GearProvenance.readInputs(item);
+        if (used == null) {
             return List.of();
         }
-        List<RecycleOutput> outputs = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : GearCosts.total(GearProvenance.resolveParts(item)).entrySet()) {
-            if (entry.getValue() != null && entry.getValue() > 0) {
-                outputs.add(new RecycleOutput(entry.getKey(), entry.getValue()));
-            }
-        }
-        return outputs;
+        return RecycleOutput.fromAmounts(used);
     }
 
     private static boolean hasSocketedRunes(ItemStack item) {

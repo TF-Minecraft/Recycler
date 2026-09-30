@@ -85,7 +85,7 @@ class UtilitiesTest extends TestSupport {
   @Test
   void scaledOutputsMergeRoundDownAndSplitStacks() {
     var ctx = new RecycleContext(-1, 2, 0);
-    assertEquals(0, ctx.maxReturnRate());
+    assertEquals(0, ctx.returnRate());
     assertEquals(1, ctx.durabilityFactor());
     assertEquals(1, ctx.stackAmount());
     assertEquals(1, RecycleContext.of(null, 1, 1).stackAmount());

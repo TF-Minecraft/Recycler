@@ -2,7 +2,6 @@ package net.tfminecraft.recycler.provider;
 
 import org.bukkit.inventory.ItemStack;
 
-import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
 import java.util.List;
@@ -25,17 +24,7 @@ public interface RecycleProvider {
     List<RecycleOutput> resolveBaseOutputs(ItemStack item);
 
     /**
-     * Whether {@link net.tfminecraft.recycler.Cache#maxReturnRate} applies to this provider.
-     * Config recipes use yaml amounts as-is (still scaled by durability and stack size).
+     * This provider's {@code return_rates} entry, applied to base outputs before durability scaling.
      */
-    default boolean appliesMaxReturnRate() {
-        return true;
-    }
-
-    /**
-     * Rate applied to base outputs before durability scaling.
-     */
-    default double returnRate() {
-        return appliesMaxReturnRate() ? Cache.maxReturnRate : 1.0;
-    }
+    double returnRate();
 }

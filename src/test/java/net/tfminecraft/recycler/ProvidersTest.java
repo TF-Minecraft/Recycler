@@ -9,8 +9,7 @@ import net.tfminecraft.advancedcrafting.managers.AlloyManager;
 import net.tfminecraft.advancedcrafting.objects.alloys.Alloy;
 import net.tfminecraft.advancedcrafting.objects.data.*;
 import net.tfminecraft.advancedcrafting.objects.ingredients.Ingredient;
-import net.tfminecraft.gunsandgadgets.guns.data.GunCraftProvenance;
-import net.tfminecraft.gunsandgadgets.guns.parts.GunPart;
+import net.tfminecraft.gunsandgadgets.guns.data.GunCraftInputs;
 import net.tfminecraft.gunsandgadgets.utils.*;
 import net.tfminecraft.recycler.loader.*;
 import net.tfminecraft.recycler.model.*;
@@ -23,8 +22,7 @@ class ProvidersTest extends TestSupport {
   void advancedCraftingResolvesLiveIngredientsAlloysAndMissingDefinitions() {
     var provider = new AdvancedCraftingProvider();
     assertEquals(10, provider.priority());
-    assertTrue(provider.appliesMaxReturnRate());
-    assertEquals(Cache.maxReturnRate, provider.returnRate());
+    assertEquals(Cache.advancedCraftingReturnRate, provider.returnRate());
     var stack = item(Material.IRON_SWORD);
     try (var prov = mockStatic(CraftProvenance.class);
         var ingredients = mockStatic(IngredientLoader.class);
@@ -91,42 +89,44 @@ class ProvidersTest extends TestSupport {
   }
 
   @Test
-  void gunsRequireIntactManagedProvenanceAndMergeLivePositiveCosts() {
+  void gunsReturnRecordedInputsAndRejectUnrecordedOrBrokenGuns() {
     var provider = new GunsAndGadgetsProvider();
     assertEquals(20, provider.priority());
+    assertEquals(Cache.gunsReturnRate, provider.returnRate());
     var stack = item(Material.CROSSBOW);
     try (var managed = mockStatic(GunStatRefresher.class);
         var broken = mockStatic(GunBrokenMarker.class);
-        var provenance = mockStatic(GunCraftProvenance.class)) {
+        var inputs = mockStatic(GunCraftInputs.class)) {
+      inputs.when(() -> GunCraftInputs.readFrom(stack)).thenReturn(null);
       assertFalse(provider.canHandle(stack));
       assertTrue(provider.resolveBaseOutputs(stack).isEmpty());
       managed.when(() -> GunStatRefresher.isManaged(stack)).thenReturn(true);
       broken.when(() -> GunBrokenMarker.isBroken(stack)).thenReturn(true);
       assertFalse(provider.canHandle(stack));
       broken.when(() -> GunBrokenMarker.isBroken(stack)).thenReturn(false);
-      assertFalse(provider.canHandle(stack));
-      var prov = mock(GunCraftProvenance.class);
-      provenance.when(() -> GunCraftProvenance.readFrom(stack)).thenReturn(prov);
-      when(prov.resolveStampedParts())
-          .thenReturn(new GunCraftProvenance.ResolvedParts(List.of(), List.of("missing")));
-      assertFalse(provider.canHandle(stack));
-      assertTrue(provider.resolveBaseOutputs(stack).isEmpty());
-      var part = mock(GunPart.class);
-      when(part.getCost())
-          .thenReturn(new HashMap<>(Map.of("v.iron", 2, "zero", 0, "negative", -1)));
-      when(prov.resolveStampedParts())
-          .thenReturn(new GunCraftProvenance.ResolvedParts(List.of(part, part), List.of()));
+      assertFalse(provider.canHandle(stack), "Guns crafted before inputs were recorded are refused");
+      inputs.when(() -> GunCraftInputs.readFrom(stack)).thenReturn(Map.of("v.iron", 4, "zero", 0));
       assertTrue(provider.canHandle(stack));
       assertEquals(List.of(new RecycleOutput("v.iron", 4)), provider.resolveBaseOutputs(stack));
     }
   }
 
   @Test
+  void recordedAmountsSkipBlankPathsAndNonPositiveAmounts() {
+    var amounts = new LinkedHashMap<String, Integer>();
+    amounts.put(null, 1);
+    amounts.put(" ", 1);
+    amounts.put("absent", null);
+    amounts.put("zero", 0);
+    amounts.put("v.gold", 3);
+    assertEquals(List.of(new RecycleOutput("v.gold", 3)), RecycleOutput.fromAmounts(amounts));
+  }
+
+  @Test
   void configFallbackUsesYamlQuantitiesAndChainSelectsFirstYieldingProvider() throws Exception {
     var config = new ConfigProvider();
     assertEquals(Integer.MAX_VALUE, config.priority());
-    assertFalse(config.appliesMaxReturnRate());
-    assertEquals(1, config.returnRate());
+    assertEquals(Cache.recipeReturnRate, config.returnRate());
     var stack = item(Material.STONE);
     new RecipeLoader().loadFolder(dir.toFile());
     assertFalse(config.canHandle(stack));
