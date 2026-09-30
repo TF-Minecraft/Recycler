@@ -217,6 +217,15 @@ class UtilitiesTest extends TestSupport {
     meta.setDamage(250);
     sword.setItemMeta(meta);
     assertEquals(0, DurabilityScaler.factor(sword));
+    var staff = mock(ItemStack.class);
+    var staffMeta = mock(Damageable.class);
+    when(staff.getType()).thenReturn(Material.STICK);
+    when(staff.hasItemMeta()).thenReturn(true);
+    when(staff.getItemMeta()).thenReturn(staffMeta);
+    when(staffMeta.hasMaxDamage()).thenReturn(true);
+    when(staffMeta.getMaxDamage()).thenReturn(500);
+    when(staffMeta.getDamage()).thenReturn(125);
+    assertEquals(.75, DurabilityScaler.factor(staff), "max_damage component beats the material default");
     var gem = item(Material.DIAMOND);
     var gm = gem.getItemMeta();
     gm.setDisplayName("gem");
@@ -226,15 +235,18 @@ class UtilitiesTest extends TestSupport {
     try (var api = mockStatic(NBTItem.class)) {
       var nbt = mock(NBTItem.class);
       api.when(() -> NBTItem.get(sword)).thenReturn(nbt);
-      assertEquals(0, DurabilityScaler.factor(sword));
-      when(nbt.hasTag("MMOITEMS_CUSTOM_DURABILITY")).thenReturn(true);
-      assertEquals(0, DurabilityScaler.factor(sword));
+      assertEquals(0, DurabilityScaler.factor(sword), "No custom durability falls back to vanilla");
       when(nbt.hasTag("MMOITEMS_MAX_DURABILITY")).thenReturn(true);
-      assertEquals(1, DurabilityScaler.factor(sword));
+      assertEquals(0, DurabilityScaler.factor(sword), "A zero maximum falls back to vanilla");
       when(nbt.getDouble("MMOITEMS_MAX_DURABILITY")).thenReturn(100d);
+      assertEquals(1, DurabilityScaler.factor(sword), "Never damaged: no current tag yet");
+      when(nbt.hasTag("MMOITEMS_DURABILITY")).thenReturn(true);
+      when(nbt.getDouble("MMOITEMS_DURABILITY")).thenReturn(25d);
+      assertEquals(.25, DurabilityScaler.factor(sword));
+      when(nbt.getDouble("MMOITEMS_DURABILITY")).thenReturn(-5d);
       assertEquals(0, DurabilityScaler.factor(sword));
-      when(nbt.getDouble("MMOITEMS_CUSTOM_DURABILITY")).thenReturn(50d);
-      assertEquals(.5, DurabilityScaler.factor(sword));
+      when(nbt.getDouble("MMOITEMS_DURABILITY")).thenReturn(150d);
+      assertEquals(1, DurabilityScaler.factor(sword));
       api.when(() -> NBTItem.get(sword)).thenThrow(new IllegalArgumentException());
       assertEquals(0, DurabilityScaler.factor(sword));
     }

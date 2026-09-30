@@ -13,11 +13,11 @@ public final class Cache {
     public static String stationBlock = "iaf(tfmc:recycling_station)";
     public static String stationPermission = "recycler.use";
 
-    public static double advancedCraftingReturnRate = 0.8;
+    public static double advancedCraftingReturnRate = 0.5;
     public static double scrapReturnRate = 0.5;
-    public static double magicGearReturnRate = 0.8;
-    public static double gunsReturnRate = 0.8;
-    public static double goldsmithReturnRate = 0.8;
+    public static double magicGearReturnRate = 0.5;
+    public static double gunsReturnRate = 0.5;
+    public static double goldsmithReturnRate = 0.5;
     public static double recipeReturnRate = 1.0;
     public static boolean blockConfirmWhenZeroYield = true;
 
