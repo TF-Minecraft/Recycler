@@ -22,11 +22,11 @@ class LoadersTest extends TestSupport {
       Files.copy(getClass().getResourceAsStream("/" + name), dir.resolve(name));
     loader.load(dir.resolve("config.yml").toFile());
     gui.load(dir.resolve("gui.yml").toFile());
-    assertEquals(.8, Cache.advancedCraftingReturnRate);
+    assertEquals(.5, Cache.advancedCraftingReturnRate);
     assertEquals(.5, Cache.scrapReturnRate);
-    assertEquals(.8, Cache.magicGearReturnRate);
-    assertEquals(.8, Cache.gunsReturnRate);
-    assertEquals(.8, Cache.goldsmithReturnRate);
+    assertEquals(.5, Cache.magicGearReturnRate);
+    assertEquals(.5, Cache.gunsReturnRate);
+    assertEquals(.5, Cache.goldsmithReturnRate);
     assertEquals(1, Cache.recipeReturnRate);
     assertEquals("world", Messages.get("hello"));
     assertFalse(loader.loadSafe(dir.resolve("missing").toFile()));
@@ -51,7 +51,7 @@ class LoadersTest extends TestSupport {
     assertEquals(.25, Cache.scrapReturnRate);
     assertEquals(.6, Cache.magicGearReturnRate);
     assertEquals(1, Cache.gunsReturnRate);
-    assertEquals(.8, Cache.goldsmithReturnRate);
+    assertEquals(.5, Cache.goldsmithReturnRate, "Non-finite values use the default");
     assertEquals(.9, Cache.recipeReturnRate);
     loader.loadSafe(yaml("legacy.yml", "max_return_rate: 0.6\n").toFile());
     assertEquals(.6, Cache.advancedCraftingReturnRate, "Old max_return_rate still applies");

@@ -15,7 +15,7 @@ import net.tfminecraft.recycler.Recycler;
 
 public final class ConfigLoader implements LoaderInterface {
 
-    private static final double DEFAULT_CRAFTED_RATE = 0.8;
+    private static final double DEFAULT_CRAFTED_RATE = 0.5;
     private static final double DEFAULT_SCRAP_RATE = 0.5;
     private static final double DEFAULT_RECIPE_RATE = 1.0;
 

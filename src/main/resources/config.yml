@@ -26,24 +26,26 @@ station:
     burst_particles: true
     stagger_ticks: 3
 
-# Share of the original craft materials each item type returns, 0.0-1.0 (0.8 = 80%).
+# Share of the original craft materials each item type returns, 0.0-1.0 (0.5 = 50%).
 # Applied before durability scaling (worn items return less) and rounded down per deposit.
 # Weapons, guns and jewelry crafted before their plugin recorded what was used cannot be recycled.
 # Values outside 0.0-1.0 are clamped. A missing entry falls back to the old max_return_rate
 # (crafted items) or scrap_return_rate (alloy scrap) key if present.
 return_rates:
   # AdvancedCrafting equipment: its recorded ingredients, and each alloy's base + catalysts.
-  advanced_crafting: 0.8
+  advanced_crafting: 0.5
   # Scrap from a failed alloy forge: the base metal that forge used (0.5 = 1 base metal per 2 scrap).
   # Scrap forged before AdvancedCrafting 2.2.0 has no recorded base and cannot be recycled.
   alloy_scrap: 0.5
   # Magic mage weapons: the materials charged when the weapon was crafted.
-  magic_gear: 0.8
+  magic_gear: 0.5
   # GunsAndGadgets guns: the materials taken when the gun was crafted.
-  guns: 0.8
+  guns: 0.5
   # GemInfusion goldsmithing jewelry: the materials deposited on the bench (the infused gem is not returned).
-  goldsmith_jewelry: 0.8
-  # recipes/*.yml outputs (1.0 = the listed amounts).
+  goldsmith_jewelry: 0.5
+  # Items with no crafting record, recycled through the hand-written files in recipes/*.yml.
+  # Each file lists an input item and fixed outputs (e.g. runes -> 2 enchanted dust).
+  # This multiplies those listed amounts: 1.0 gives exactly what the file says, 0.5 gives half.
   recipes: 1.0
 
 # Round outputs down (floor). Zero-yield confirms are blocked when true.
