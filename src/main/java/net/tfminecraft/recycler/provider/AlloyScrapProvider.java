@@ -32,26 +32,41 @@ public final class AlloyScrapProvider implements RecycleProvider {
     @Override
     public List<RecycleOutput> resolveBaseOutputs(ItemStack item) {
         List<RecycleOutput> outputs = new ArrayList<>();
-        ScrapProvenance.readInputs(item).forEach((id, amount) -> addOutput(outputs, id, amount));
+        String baseId = ScrapProvenance.readBaseId(item);
+        ScrapProvenance.readInputs(item).forEach((id, amount) -> addOutput(outputs, id, amount,
+                id.equalsIgnoreCase(baseId)));
         return outputs;
     }
 
-    private void addOutput(List<RecycleOutput> outputs, String baseId, int amount) {
-        Ingredient ingredient = IngredientLoader.getByString(baseId);
+    private void addOutput(List<RecycleOutput> outputs, String ingredientId, int amount, boolean base) {
+        Ingredient ingredient = IngredientLoader.getByString(ingredientId);
         if (ingredient == null) {
-            logMissing("ingredient", baseId);
+            logMissing("ingredient", ingredientId);
             return;
         }
         String path = ingredient.getPath();
         if (path == null || path.isBlank()) {
-            logMissing("ingredient path", baseId);
+            logMissing("ingredient path", ingredientId);
             return;
         }
-        double rate = path.toLowerCase(java.util.Locale.ROOT).startsWith("m.gemstones.")
-                ? Cache.scrapGemRates.getOrDefault(Integer.toString(ingredient.getIngredientData().getTier()),
-                        Cache.scrapGemDefaultRate)
-                : Cache.scrapReturnRate;
+        if (!base && !isCatalystWhitelisted(path)) return;
+        double rate = base ? Cache.scrapReturnRate
+                : Cache.scrapCatalystRates.getOrDefault(Integer.toString(ingredient.getIngredientData().getTier()),
+                        Cache.scrapCatalystDefaultRate);
         outputs.add(new RecycleOutput(path, amount, rate));
+    }
+
+    private boolean isCatalystWhitelisted(String path) {
+        String normalized = path.toLowerCase(java.util.Locale.ROOT);
+        for (String rule : Cache.scrapCatalystWhitelistPaths) {
+            String pattern = rule.toLowerCase(java.util.Locale.ROOT);
+            if (pattern.endsWith("*")) {
+                if (normalized.startsWith(pattern.substring(0, pattern.length() - 1))) return true;
+            } else if (normalized.equals(pattern)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

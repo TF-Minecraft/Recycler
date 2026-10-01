@@ -47,18 +47,25 @@ public final class ConfigLoader implements LoaderInterface {
         ConfigurationSection rates = config.getConfigurationSection("return_rates");
         Cache.advancedCraftingReturnRate = readRate(rates, "advanced_crafting", craftedFallback, DEFAULT_CRAFTED_RATE);
         Cache.scrapReturnRate = readRate(rates, "alloy_scrap", scrapFallback, DEFAULT_SCRAP_RATE);
-        ConfigurationSection gemRates = config.getConfigurationSection("scrap_gem_return_rates.tiers");
+        ConfigurationSection catalystRates = config.getConfigurationSection("scrap_catalyst_return_rates");
+        if (catalystRates == null) {
+            catalystRates = config.getConfigurationSection("scrap_gem_return_rates");
+        }
+        Cache.scrapCatalystWhitelistPaths = config.contains("scrap_catalyst_return_rates.whitelist_paths")
+                ? config.getStringList("scrap_catalyst_return_rates.whitelist_paths")
+                : java.util.List.of("m.gemstones.*");
+        ConfigurationSection tierConfig = catalystRates == null ? null : catalystRates.getConfigurationSection("tiers");
         var tierRates = new java.util.HashMap<String, Double>();
         var defaults = java.util.Map.of("1", 0.01, "2", 0.25, "3", 0.5, "4", 0.75);
-        defaults.forEach((tier, rate) -> tierRates.put(tier, readRate(gemRates, tier, rate, rate)));
-        if (gemRates != null) {
-            for (String tier : gemRates.getKeys(false)) {
+        defaults.forEach((tier, rate) -> tierRates.put(tier, readRate(tierConfig, tier, rate, rate)));
+        if (tierConfig != null) {
+            for (String tier : tierConfig.getKeys(false)) {
                 double defaultRate = defaults.getOrDefault(tier, 0.01);
-                tierRates.put(tier, readRate(gemRates, tier, defaultRate, defaultRate));
+                tierRates.put(tier, readRate(tierConfig, tier, defaultRate, defaultRate));
             }
         }
-        Cache.scrapGemRates = java.util.Map.copyOf(tierRates);
-        Cache.scrapGemDefaultRate = readRate(config.getConfigurationSection("scrap_gem_return_rates"),
+        Cache.scrapCatalystRates = java.util.Map.copyOf(tierRates);
+        Cache.scrapCatalystDefaultRate = readRate(catalystRates,
                 "default", 0.01, 0.01);
         Cache.magicGearReturnRate = readRate(rates, "magic_gear", craftedFallback, DEFAULT_CRAFTED_RATE);
         Cache.gunsReturnRate = readRate(rates, "guns", craftedFallback, DEFAULT_CRAFTED_RATE);
