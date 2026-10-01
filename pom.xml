@@ -12,6 +12,7 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.proc>full</maven.compiler.proc>
+        <!-- Scrap recovery requires the complete ingredient provenance API from 2.2.5. -->
         <advancedcrafting.version>2.2.5</advancedcrafting.version>
         <geminfusion.version>2.2.5</geminfusion.version>
         <gunsandgadgets.version>2.0.6</gunsandgadgets.version>
