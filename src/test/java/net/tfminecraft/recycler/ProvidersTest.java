@@ -75,6 +75,7 @@ class ProvidersTest extends TestSupport {
       prov.when(() -> ScrapProvenance.readBaseId(stack)).thenReturn(" ");
       assertTrue(provider.resolveBaseOutputs(stack).isEmpty());
       prov.when(() -> ScrapProvenance.readBaseId(stack)).thenReturn("iron");
+      prov.when(() -> ScrapProvenance.readInputs(stack)).thenReturn(Map.of("iron", 1));
       assertTrue(provider.canHandle(stack));
       assertTrue(provider.resolveBaseOutputs(stack).isEmpty());
       var ingredient = mock(Ingredient.class);
@@ -84,7 +85,7 @@ class ProvidersTest extends TestSupport {
       assertTrue(provider.resolveBaseOutputs(stack).isEmpty());
       when(ingredient.getPath()).thenReturn("v.iron_ingot");
       assertEquals(
-          List.of(new RecycleOutput("v.iron_ingot", 1)), provider.resolveBaseOutputs(stack));
+          List.of(new RecycleOutput("v.iron_ingot", 1, Cache.scrapReturnRate)), provider.resolveBaseOutputs(stack));
     }
   }
 

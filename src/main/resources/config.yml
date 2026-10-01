@@ -34,7 +34,7 @@ station:
 return_rates:
   # AdvancedCrafting equipment: its recorded ingredients, and each alloy's base + catalysts.
   advanced_crafting: 0.5
-  # Scrap from a failed alloy forge: the base metal that forge used (0.5 = 1 base metal per 2 scrap).
+  # Independent chance per recorded non-gem material unit in failed-forge scrap.
   # Scrap forged before AdvancedCrafting 2.2.0 has no recorded base and cannot be recycled.
   alloy_scrap: 0.5
   # Magic mage weapons: the materials charged when the weapon was crafted.
@@ -48,7 +48,20 @@ return_rates:
   # This multiplies those listed amounts: 1.0 gives exactly what the file says, 0.5 gives half.
   recipes: 1.0
 
-# Round outputs down (floor). Zero-yield confirms are blocked when true.
+# Independent recovery chance per gem unit consumed by a failed alloy forge (0.0-1.0).
+# Uses the gem ingredient's tier in AdvancedCrafting, regardless of its ingredient type.
+# Amounts and stacked scrap roll each material unit separately. Preview shows possible returns.
+# Older scrap has no catalyst record and can return only its recorded base.
+scrap_gem_return_rates:
+  default: 0.01
+  tiers:
+    '1': 0.01
+    '2': 0.25
+    '3': 0.5
+    '4': 0.75
+
+# Deterministic outputs round down. Blocks confirms with no possible yield;
+# a failed scrap recovery roll still consumes the scrap.
 block_confirm_when_zero_yield: true
 
 # Deposit policy (checked before provider resolution).

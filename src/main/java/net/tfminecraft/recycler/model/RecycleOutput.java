@@ -5,9 +5,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * One output line before return-rate and durability scaling.
+ * One output line. A nonnegative returnChance rolls per unit; -1 uses deterministic scaling.
  */
-public record RecycleOutput(String itemPath, int baseAmount) {
+public record RecycleOutput(String itemPath, int baseAmount, double returnChance) {
+
+    public RecycleOutput(String itemPath, int baseAmount) {
+        this(itemPath, baseAmount, -1);
+    }
 
     public RecycleOutput {
         if (itemPath == null) {

@@ -98,6 +98,13 @@ public final class InventoryManager {
                 continue;
             }
             stack.setAmount(Math.min(64, output.baseAmount()));
+            if (output.returnChance() >= 0) {
+                var meta = stack.getItemMeta();
+                var lore = meta.hasLore() ? new java.util.ArrayList<>(meta.getLore()) : new java.util.ArrayList<String>();
+                lore.add(String.format(java.util.Locale.ROOT, "Recovery chance: %.1f%% per material", output.returnChance() * 100));
+                meta.setLore(lore);
+                stack.setItemMeta(meta);
+            }
             inv.setItem(GridLayout.previewSlots().get(index), stack);
             index++;
         }

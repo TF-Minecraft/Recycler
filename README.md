@@ -11,7 +11,7 @@ It connects several crafting systems to a shared recycling experience, helping s
 - **Preview before committing** — see the expected material return in the station's interface before confirming the recycle.
 - **Condition-based recovery** — worn equipment yields less than an equivalent item at full durability.
 - **Crafting-system support** — recover materials from supported AdvancedCrafting items, Magic gear, GunsAndGadgets items, and goldsmithing jewelry. Each returns the materials that actually went into the item, not the recipe as it reads today; items crafted before their plugin recorded this cannot be recycled.
-- **Alloy scrap salvage** — turn scrap from a failed AdvancedCrafting alloy forge back into part of the base metal it used.
+- **Alloy scrap salvage** — recover recorded base materials and catalysts, including gems, from a failed AdvancedCrafting alloy forge. Each consumed material unit rolls independently.
 - **Per-type return rates** — each kind of item (AdvancedCrafting gear, alloy scrap, Magic gear, guns, jewelry, and recipe items) returns its own configurable share of the materials it was made from.
 - **Additional salvage recipes** — handle other supported items through dedicated recycling recipes, including runes that return enchanted dust.
 - **Protection for socketed items** — refuse supported mage weapons containing runes, and goldsmithing jewelry containing socketed gems, so dismantling does not silently consume them.
@@ -36,3 +36,5 @@ Copyright (c) 2026 TF-Minecraft contributors.
 TF-Minecraft-authored material in this repository is licensed under the
 [Artistic License 2.0](LICENSE). Third-party dependencies and bundled material
 retain their own licenses.
+
+Scrap recovery requires AdvancedCrafting 2.2.5 or newer. `return_rates.alloy_scrap` sets the chance per non-gem material unit. `scrap_gem_return_rates.tiers` sets gem chances by the live AdvancedCrafting ingredient tier (defaults: 1% / 25% / 50% / 75% for tiers 1-4); `default` covers unlisted tiers. Rates use 0.0-1.0 and invalid values are clamped or reset to defaults. Each recorded unit in each stacked scrap rolls once on confirmation, and failed rolls still consume the scrap. The preview lists possible quantities and chances without rolling. Older base-tagged scrap returns only its recorded base, since its catalysts were never saved.

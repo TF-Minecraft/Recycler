@@ -30,16 +30,38 @@ public final class RecycleResult {
     }
 
     public static RecycleResult of(String providerId, List<RecycleOutput> baseOutputs, RecycleContext ctx) {
+        return of(providerId, baseOutputs, ctx, false, null);
+    }
+
+    public static RecycleResult of(String providerId, List<RecycleOutput> baseOutputs, RecycleContext ctx,
+            boolean roll, java.util.function.DoubleSupplier random) {
         Map<String, Integer> merged = new HashMap<>();
+        List<RecycleOutput> finalChanceOutputs = new ArrayList<>();
         double scale = ctx.combinedScale() * ctx.stackAmount();
         for (RecycleOutput line : baseOutputs) {
+            if (line.returnChance() >= 0) {
+                int amount = line.baseAmount() * ctx.stackAmount();
+                double chance = line.returnChance();
+                if (chance == 0) continue;
+                int returned = 0;
+                if (roll) {
+                    for (int unit = 0; unit < amount; unit++) {
+                        if (random.getAsDouble() < chance) returned++;
+                    }
+                } else {
+                    returned = amount;
+                }
+                if (returned > 0) finalChanceOutputs.add(new RecycleOutput(line.itemPath(), returned,
+                        roll ? -1 : chance));
+                continue;
+            }
             int scaled = (int) Math.floor(line.baseAmount() * scale);
             if (scaled <= 0) {
                 continue;
             }
             merged.merge(line.itemPath(), scaled, Integer::sum);
         }
-        List<RecycleOutput> finalOutputs = new ArrayList<>();
+        List<RecycleOutput> finalOutputs = new ArrayList<>(finalChanceOutputs);
         for (Map.Entry<String, Integer> entry : merged.entrySet()) {
             finalOutputs.add(new RecycleOutput(entry.getKey(), entry.getValue()));
         }
@@ -48,6 +70,12 @@ public final class RecycleResult {
 
     public boolean isHandled() {
         return handled;
+    }
+
+    /** Roll only after confirmation; a failed roll still consumes the scrap. */
+    public RecycleResult roll() {
+        return of(providerId, outputs, new RecycleContext(1, 1, 1), true,
+                () -> java.util.concurrent.ThreadLocalRandom.current().nextDouble());
     }
 
     public String getProviderId() {
