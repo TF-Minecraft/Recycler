@@ -185,6 +185,7 @@ public final class RecyclerManager implements Listener {
             return;
         }
 
+        result = result.roll();
         ItemStack inputClone = escrow.clone();
         String providerId = result.getProviderId();
         List<RecycleOutput> outputLines = result.getOutputs();

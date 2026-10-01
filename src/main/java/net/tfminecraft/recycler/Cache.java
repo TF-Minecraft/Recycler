@@ -15,6 +15,9 @@ public final class Cache {
 
     public static double advancedCraftingReturnRate = 0.5;
     public static double scrapReturnRate = 0.5;
+    public static java.util.Map<String, Double> scrapGemRates = java.util.Map.of(
+            "1", 0.01, "2", 0.25, "3", 0.5, "4", 0.75);
+    public static double scrapGemDefaultRate = 0.01;
     public static double magicGearReturnRate = 0.5;
     public static double gunsReturnRate = 0.5;
     public static double goldsmithReturnRate = 0.5;

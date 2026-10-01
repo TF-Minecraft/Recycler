@@ -47,6 +47,19 @@ public final class ConfigLoader implements LoaderInterface {
         ConfigurationSection rates = config.getConfigurationSection("return_rates");
         Cache.advancedCraftingReturnRate = readRate(rates, "advanced_crafting", craftedFallback, DEFAULT_CRAFTED_RATE);
         Cache.scrapReturnRate = readRate(rates, "alloy_scrap", scrapFallback, DEFAULT_SCRAP_RATE);
+        ConfigurationSection gemRates = config.getConfigurationSection("scrap_gem_return_rates.tiers");
+        var tierRates = new java.util.HashMap<String, Double>();
+        var defaults = java.util.Map.of("1", 0.01, "2", 0.25, "3", 0.5, "4", 0.75);
+        defaults.forEach((tier, rate) -> tierRates.put(tier, readRate(gemRates, tier, rate, rate)));
+        if (gemRates != null) {
+            for (String tier : gemRates.getKeys(false)) {
+                double defaultRate = defaults.getOrDefault(tier, 0.01);
+                tierRates.put(tier, readRate(gemRates, tier, defaultRate, defaultRate));
+            }
+        }
+        Cache.scrapGemRates = java.util.Map.copyOf(tierRates);
+        Cache.scrapGemDefaultRate = readRate(config.getConfigurationSection("scrap_gem_return_rates"),
+                "default", 0.01, 0.01);
         Cache.magicGearReturnRate = readRate(rates, "magic_gear", craftedFallback, DEFAULT_CRAFTED_RATE);
         Cache.gunsReturnRate = readRate(rates, "guns", craftedFallback, DEFAULT_CRAFTED_RATE);
         Cache.goldsmithReturnRate = readRate(rates, "goldsmith_jewelry", craftedFallback, DEFAULT_CRAFTED_RATE);

@@ -14,6 +14,33 @@ import org.junit.jupiter.api.Test;
 
 class InventoryManagerTest extends TestSupport {
   @Test
+  void chancePreviewShowsPossibleAmountAndPreservesExistingLore() {
+    var chain = mock(RecycleProviderChain.class);
+    var manager = new InventoryManager(chain);
+    var player = server.addPlayer();
+    var session = new RecycleSession(player.getUniqueId());
+    var escrow = mock(EscrowManager.class);
+    var input = item(Material.IRON_NUGGET);
+    when(escrow.getEscrow(session.getPlayerId())).thenReturn(input);
+    when(chain.resolve(input)).thenReturn(RecycleResult.of("scrap",
+        List.of(new RecycleOutput("gem", 1, .01)), new RecycleContext(.5, 1, 1)));
+    manager.openMain(player, session);
+    for (boolean hasLore : List.of(false, true)) {
+      when(api.getCreator().getItemFromPath("gem")).thenAnswer(x -> {
+        var gem = item(Material.DIAMOND);
+        var meta = gem.getItemMeta();
+        if (hasLore) meta.setLore(List.of("Original lore"));
+        gem.setItemMeta(meta);
+        return gem;
+      });
+      manager.refreshPreview(player, session, escrow);
+      var shown = player.getOpenInventory().getTopInventory().getItem(GridLayout.previewSlots().getFirst());
+      assertEquals(1, shown.getAmount());
+      assertEquals("Recovery chance: 1.0% per material", shown.getItemMeta().getLore().getLast());
+      assertEquals(hasLore ? 2 : 1, shown.getItemMeta().getLore().size());
+    }
+  }
+  @Test
   void shellPreviewReplacementAndCapacityLimit() {
     var chain = mock(RecycleProviderChain.class);
     var manager = new InventoryManager(chain);
