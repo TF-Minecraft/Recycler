@@ -23,6 +23,8 @@ It connects several crafting systems to a shared recycling experience, helping s
 
 Technical documentation is maintained in [TF-Minecraft/Docs](https://github.com/TF-Minecraft/Docs).
 
+Return rates and alloy scrap recovery are described in the [system design guide](https://github.com/TF-Minecraft/Docs/blob/main/projects/Recycler/docs/SYSTEM.md).
+
 ## Tests and coverage
 
 Run `mvn -B --no-transfer-progress clean verify` with Java 21 and the pinned plugin dependencies installed by `.github/scripts/prepare-release.sh` and the shared CI setup action. The suite uses JUnit 5, Mockito and MockBukkit to exercise configuration, integration providers, inventory events, escrow persistence/recovery, commands, plugin lifecycle and scheduled effects.
@@ -36,5 +38,3 @@ Copyright (c) 2026 TF-Minecraft contributors.
 TF-Minecraft-authored material in this repository is licensed under the
 [Artistic License 2.0](LICENSE). Third-party dependencies and bundled material
 retain their own licenses.
-
-Scrap recovery requires AdvancedCrafting 2.2.5 or newer. `return_rates.alloy_scrap` sets the chance per base material unit. `scrap_catalyst_return_rates.tiers` sets catalyst chances by the live AdvancedCrafting ingredient tier (defaults: 1% / 25% / 50% / 75% for tiers 1-4); `default` covers unlisted tiers. `whitelist_paths` allows case-insensitive exact item paths or prefixes ending in `*`, defaults to `[m.gemstones.*]`, and excludes every other catalyst; an empty list excludes all catalysts. The recorded base bypasses this whitelist and always uses `return_rates.alloy_scrap`. Legacy `scrap_gem_return_rates` rates remain a fallback when the new section is absent. Rates use 0.0-1.0 and invalid values are clamped or reset to defaults. Each recorded unit in each stacked scrap rolls once on confirmation, and failed rolls still consume the scrap. The preview lists possible quantities and chances without rolling. Older base-tagged scrap returns only its recorded base, since its catalysts were never saved.
