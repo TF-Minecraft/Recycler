@@ -78,6 +78,38 @@ class LoadersTest extends TestSupport {
   }
 
   @Test
+  void artifactReturnsUseDefaultsOverridesAndClampNegatives() throws Exception {
+    var loader = new ConfigLoader();
+    Files.copy(getClass().getResourceAsStream("/config.yml"), dir.resolve("config.yml"));
+    loader.load(dir.resolve("config.yml").toFile());
+    assertEquals(1, Cache.artifactReturnRate);
+    assertEquals("m.currency.enchanted_dust", Cache.artifactReturnItem);
+    assertEquals(
+        Map.of("common", 1, "uncommon", 2, "rare", 3, "epic", 4, "legendary", 7),
+        Cache.artifactRarityReturns);
+    assertEquals(1, Cache.artifactDefaultReturn);
+    loader.loadSafe(
+        yaml(
+                "artifacts.yml",
+                "return_rates:\n  artifacts: 0.5\nartifact_returns:\n  item: ' m.currency.other '\n"
+                    + "  default: -2\n  rarities:\n    Common: 0\n    mythic: 9\n    rare: -1\n")
+            .toFile());
+    assertEquals(.5, Cache.artifactReturnRate);
+    assertEquals("m.currency.other", Cache.artifactReturnItem);
+    assertEquals(0, Cache.artifactDefaultReturn, "Negative amounts become 0");
+    assertEquals(
+        Map.of("common", 0, "uncommon", 2, "rare", 0, "epic", 4, "legendary", 7, "mythic", 9),
+        Cache.artifactRarityReturns);
+    loader.loadSafe(yaml("no-rarities.yml", "artifact_returns:\n  default: 3\n").toFile());
+    assertEquals(3, Cache.artifactDefaultReturn);
+    assertEquals(7, Cache.artifactRarityReturns.get("legendary"));
+    loader.loadSafe(yaml("none.yml", "{}").toFile());
+    assertEquals("m.currency.enchanted_dust", Cache.artifactReturnItem);
+    assertEquals(1, Cache.artifactDefaultReturn);
+    assertEquals(1, Cache.artifactRarityReturns.get("common"));
+  }
+
+  @Test
   void messagesFallbackResourcesAndMalformedData() throws Exception {
     var field = Messages.class.getDeclaredField("config");
     field.setAccessible(true);

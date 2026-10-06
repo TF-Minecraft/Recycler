@@ -18,6 +18,9 @@ public final class ConfigLoader implements LoaderInterface {
     private static final double DEFAULT_CRAFTED_RATE = 0.5;
     private static final double DEFAULT_SCRAP_RATE = 0.5;
     private static final double DEFAULT_RECIPE_RATE = 1.0;
+    private static final String DEFAULT_ARTIFACT_ITEM = "m.currency.enchanted_dust";
+    private static final java.util.Map<String, Integer> DEFAULT_ARTIFACT_RETURNS = java.util.Map.of(
+            "common", 1, "uncommon", 2, "rare", 3, "epic", 4, "legendary", 7);
 
     @Override
     public void load(File configFile) {
@@ -71,6 +74,8 @@ public final class ConfigLoader implements LoaderInterface {
         Cache.gunsReturnRate = readRate(rates, "guns", craftedFallback, DEFAULT_CRAFTED_RATE);
         Cache.goldsmithReturnRate = readRate(rates, "goldsmith_jewelry", craftedFallback, DEFAULT_CRAFTED_RATE);
         Cache.recipeReturnRate = readRate(rates, "recipes", DEFAULT_RECIPE_RATE, DEFAULT_RECIPE_RATE);
+        Cache.artifactReturnRate = readRate(rates, "artifacts", DEFAULT_RECIPE_RATE, DEFAULT_RECIPE_RATE);
+        applyArtifactReturns(config.getConfigurationSection("artifact_returns"));
         Cache.blockConfirmWhenZeroYield = config.getBoolean("block_confirm_when_zero_yield",
                 Cache.blockConfirmWhenZeroYield);
 
@@ -135,6 +140,36 @@ public final class ConfigLoader implements LoaderInterface {
         Recycler.plugin.getLogger().warning("[Recycler] return_rates." + key
                 + " must be between 0.0 and 1.0; using " + clamped + " instead of " + rate);
         return clamped;
+    }
+
+    /**
+     * Listed rarities override the defaults; unlisted ones keep them. Negative amounts become 0.
+     */
+    private static void applyArtifactReturns(ConfigurationSection section) {
+        var amounts = new java.util.HashMap<>(DEFAULT_ARTIFACT_RETURNS);
+        Cache.artifactReturnItem = DEFAULT_ARTIFACT_ITEM;
+        Cache.artifactDefaultReturn = 1;
+        if (section != null) {
+            Cache.artifactReturnItem = section.getString("item", DEFAULT_ARTIFACT_ITEM).trim();
+            Cache.artifactDefaultReturn = readAmount(section, "default", 1);
+            ConfigurationSection rarities = section.getConfigurationSection("rarities");
+            if (rarities != null) {
+                for (String rarity : rarities.getKeys(false)) {
+                    amounts.put(rarity.trim().toLowerCase(java.util.Locale.ROOT), readAmount(rarities, rarity, 0));
+                }
+            }
+        }
+        Cache.artifactRarityReturns = java.util.Map.copyOf(amounts);
+    }
+
+    private static int readAmount(ConfigurationSection section, String key, int fallback) {
+        int amount = section.getInt(key, fallback);
+        if (amount >= 0) {
+            return amount;
+        }
+        Recycler.plugin.getLogger().warning("[Recycler] artifact_returns amount for " + key
+                + " cannot be negative; using 0 instead of " + amount);
+        return 0;
     }
 
     private static void applyEffect(ConfigurationSection section,

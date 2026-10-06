@@ -10,7 +10,8 @@ import org.bukkit.inventory.ItemStack;
 import net.tfminecraft.recycler.util.DurabilityScaler;
 
 /**
- * Ordered provider chain: AdvancedCrafting, alloy scrap, Magic, GunsAndGadgets, goldsmithing, then config fallback.
+ * Ordered provider chain: AdvancedCrafting, alloy scrap, Magic gear, Magic artifacts, GunsAndGadgets,
+ * goldsmithing, then config fallback.
  */
 public final class RecycleProviderChain {
 
@@ -24,6 +25,7 @@ public final class RecycleProviderChain {
         }
         if (Bukkit.getPluginManager().isPluginEnabled("Magic")) {
             providers.add(new MagicGearProvider());
+            providers.add(new ArtifactProvider());
         }
         if (Bukkit.getPluginManager().isPluginEnabled("GunsAndGadgets")) {
             providers.add(new GunsAndGadgetsProvider());

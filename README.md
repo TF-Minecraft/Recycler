@@ -12,7 +12,8 @@ It connects several crafting systems to a shared recycling experience, helping s
 - **Condition-based recovery** — worn equipment yields less than an equivalent item at full durability.
 - **Crafting-system support** — recover materials from supported AdvancedCrafting items, Magic gear, GunsAndGadgets items, and goldsmithing jewelry. Each returns the materials that actually went into the item, not the recipe as it reads today; items crafted before their plugin recorded this cannot be recycled.
 - **Alloy scrap salvage** — recover recorded base materials and catalysts, including gems, from a failed AdvancedCrafting alloy forge. Each consumed material unit rolls independently.
-- **Per-type return rates** — each kind of item (AdvancedCrafting gear, alloy scrap, Magic gear, guns, jewelry, and recipe items) returns its own configurable share of the materials it was made from.
+- **Artifact salvage** — break down any Magic artifact, muffled or not, for enchanted dust by rarity (1 / 2 / 3 / 4 / 7 from Common to Legendary by default). Stored aura is lost.
+- **Per-type return rates** — each kind of item (AdvancedCrafting gear, alloy scrap, Magic gear, guns, jewelry, artifacts, and recipe items) returns its own configurable share of the materials it was made from.
 - **Additional salvage recipes** — handle other supported items through dedicated recycling recipes, including runes that return enchanted dust.
 - **Protection for socketed items** — refuse supported mage weapons containing runes, and goldsmithing jewelry containing socketed gems, so dismantling does not silently consume them.
 - **Visible completion** — finish recycling with station sounds, particles, and recovered items appearing in the world.

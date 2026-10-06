@@ -47,6 +47,22 @@ return_rates:
   # Each file lists an input item and fixed outputs (e.g. runes -> 2 enchanted dust).
   # This multiplies those listed amounts: 1.0 gives exactly what the file says, 0.5 gives half.
   recipes: 1.0
+  # Magic artifacts: multiplies the artifact_returns amounts below. 1.0 gives exactly the table.
+  artifacts: 1.0
+
+# Magic artifacts, muffled or not. They are found, not crafted, so they return a fixed
+# amount of `item` by rarity. Any aura stored in the artifact is lost.
+# Rarities not listed keep these defaults; set one to 0 to stop that rarity returning anything.
+# Older artifacts with no recorded rarity, or a rarity not in the list, use `default`.
+artifact_returns:
+  item: m.currency.enchanted_dust
+  rarities:
+    common: 1
+    uncommon: 2
+    rare: 3
+    epic: 4
+    legendary: 7
+  default: 1
 
 # Independent recovery chance per whitelisted catalyst unit consumed by a failed alloy forge (0.0-1.0).
 # Applies to every recorded ingredient other than the scrap's base, using its AdvancedCrafting tier.
