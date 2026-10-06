@@ -92,6 +92,9 @@ class ArtifactProviderTest extends TestSupport {
       assertEquals("ArtifactProvider", result.getProviderId());
       assertEquals(
           List.of(new RecycleOutput("m.currency.enchanted_dust", 3)), result.getOutputs());
+      Cache.artifactRarityReturns = Map.of("rare", 0);
+      assertFalse(
+          chain.resolve(stack).isHandled(), "A rarity set to 0 is refused, not sent to recipes");
     }
   }
 }

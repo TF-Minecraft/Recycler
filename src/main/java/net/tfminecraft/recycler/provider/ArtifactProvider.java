@@ -36,11 +36,12 @@ public final class ArtifactProvider implements RecycleProvider {
     }
 
     /**
-     * An artifact still under {@code min_muffle}. The chain refuses it outright so a
-     * recipe file matching the artifact cannot get around the threshold.
+     * An artifact this provider will not recycle: still under {@code min_muffle}, or its
+     * rarity returns nothing. The chain refuses it outright so a recipe file matching the
+     * artifact cannot get around either setting.
      */
     public boolean refuses(ItemStack item) {
-        return Artifact.fromItem(item) != null && belowMinMuffle(item);
+        return Artifact.fromItem(item) != null && (belowMinMuffle(item) || outputsFor(item).isEmpty());
     }
 
     private static boolean belowMinMuffle(ItemStack item) {
@@ -52,6 +53,10 @@ public final class ArtifactProvider implements RecycleProvider {
         if (Artifact.fromItem(item) == null) {
             return List.of();
         }
+        return outputsFor(item);
+    }
+
+    private static List<RecycleOutput> outputsFor(ItemStack item) {
         int amount = Cache.artifactRarityReturns.getOrDefault(rarity(item), Cache.artifactDefaultReturn);
         if (amount <= 0 || Cache.artifactReturnItem.isBlank()) {
             return List.of();
