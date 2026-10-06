@@ -23,6 +23,12 @@ public final class Cache {
     public static double gunsReturnRate = 0.5;
     public static double goldsmithReturnRate = 0.5;
     public static double recipeReturnRate = 1.0;
+    public static double artifactReturnRate = 1.0;
+    public static String artifactReturnItem = "m.currency.enchanted_dust";
+    public static java.util.Map<String, Integer> artifactRarityReturns = java.util.Map.of(
+            "common", 1, "uncommon", 2, "rare", 3, "epic", 4, "legendary", 7);
+    public static int artifactDefaultReturn = 1;
+    public static double artifactMinMuffle = 0.0;
     public static boolean blockConfirmWhenZeroYield = true;
 
     public static boolean depositWhitelistMode = false;
