@@ -20,7 +20,7 @@ public final class ConfigLoader implements LoaderInterface {
     private static final double DEFAULT_RECIPE_RATE = 1.0;
     private static final String DEFAULT_ARTIFACT_ITEM = "m.currency.enchanted_dust";
     private static final java.util.Map<String, Integer> DEFAULT_ARTIFACT_RETURNS = java.util.Map.of(
-            "common", 1, "uncommon", 2, "rare", 3, "epic", 4, "legendary", 7);
+            "common", 4, "uncommon", 8, "rare", 12, "epic", 16, "legendary", 28);
 
     @Override
     public void load(File configFile) {
@@ -149,12 +149,12 @@ public final class ConfigLoader implements LoaderInterface {
     private static void applyArtifactReturns(ConfigurationSection section) {
         var amounts = new java.util.HashMap<>(DEFAULT_ARTIFACT_RETURNS);
         Cache.artifactReturnItem = DEFAULT_ARTIFACT_ITEM;
-        Cache.artifactDefaultReturn = 1;
+        Cache.artifactDefaultReturn = 4;
         Cache.artifactMinMuffle = 0.0;
         if (section != null) {
             Cache.artifactMinMuffle = readRate(section, "min_muffle", 0.0, 0.0);
             Cache.artifactReturnItem = section.getString("item", DEFAULT_ARTIFACT_ITEM).trim();
-            Cache.artifactDefaultReturn = readAmount(section, "default", 1);
+            Cache.artifactDefaultReturn = readAmount(section, "default", 4);
             ConfigurationSection rarities = section.getConfigurationSection("rarities");
             if (rarities != null) {
                 for (String rarity : rarities.getKeys(false)) {

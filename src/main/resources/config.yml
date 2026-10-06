@@ -54,18 +54,20 @@ return_rates:
 # by rarity. Any aura stored in the artifact is lost.
 # Rarities not listed keep these defaults; set one to 0 to stop that rarity being recycled.
 # Older artifacts with no recorded rarity, or a rarity not in the list, use `default`.
+# These average about 6 dust per Dowsing Artifact Mine roll, so recycling a node's artifacts
+# gives roughly half of what the same node makes on Dust Mine.
 artifact_returns:
   # Lowest muffle (0.0-1.0) an artifact needs before it can be recycled. 0.0 accepts any
   # artifact; 1.0 accepts only fully muffled ones (about a day in a chest).
   min_muffle: 0.0
   item: m.currency.enchanted_dust
   rarities:
-    common: 1
-    uncommon: 2
-    rare: 3
-    epic: 4
-    legendary: 7
-  default: 1
+    common: 4
+    uncommon: 8
+    rare: 12
+    epic: 16
+    legendary: 28
+  default: 4
 
 # Independent recovery chance per whitelisted catalyst unit consumed by a failed alloy forge (0.0-1.0).
 # Applies to every recorded ingredient other than the scrap's base, using its AdvancedCrafting tier.

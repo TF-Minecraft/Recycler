@@ -26,8 +26,8 @@ public final class Cache {
     public static double artifactReturnRate = 1.0;
     public static String artifactReturnItem = "m.currency.enchanted_dust";
     public static java.util.Map<String, Integer> artifactRarityReturns = java.util.Map.of(
-            "common", 1, "uncommon", 2, "rare", 3, "epic", 4, "legendary", 7);
-    public static int artifactDefaultReturn = 1;
+            "common", 4, "uncommon", 8, "rare", 12, "epic", 16, "legendary", 28);
+    public static int artifactDefaultReturn = 4;
     public static double artifactMinMuffle = 0.0;
     public static boolean blockConfirmWhenZeroYield = true;
 
