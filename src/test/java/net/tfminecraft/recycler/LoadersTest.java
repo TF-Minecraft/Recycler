@@ -85,9 +85,9 @@ class LoadersTest extends TestSupport {
     assertEquals(1, Cache.artifactReturnRate);
     assertEquals("m.currency.enchanted_dust", Cache.artifactReturnItem);
     assertEquals(
-        Map.of("common", 1, "uncommon", 2, "rare", 3, "epic", 4, "legendary", 7),
+        Map.of("common", 4, "uncommon", 8, "rare", 12, "epic", 16, "legendary", 28),
         Cache.artifactRarityReturns);
-    assertEquals(1, Cache.artifactDefaultReturn);
+    assertEquals(4, Cache.artifactDefaultReturn);
     assertEquals(0, Cache.artifactMinMuffle, "Any artifact is accepted by default");
     loader.loadSafe(
         yaml(
@@ -102,7 +102,7 @@ class LoadersTest extends TestSupport {
     assertEquals(1, Cache.artifactMinMuffle, "min_muffle is clamped to 0.0-1.0");
     assertEquals(
         Map.of(
-            "common", 0, "uncommon", 2, "rare", 0, "epic", 4, "legendary", 7, "mythic", 9, "odd",
+            "common", 0, "uncommon", 8, "rare", 0, "epic", 16, "legendary", 28, "mythic", 9, "odd",
             0),
         Cache.artifactRarityReturns,
         "A non-number keeps the built-in amount, or default for a new rarity");
@@ -110,11 +110,11 @@ class LoadersTest extends TestSupport {
         yaml("no-rarities.yml", "artifact_returns:\n  default: 3\n  min_muffle: 0.5\n").toFile());
     assertEquals(3, Cache.artifactDefaultReturn);
     assertEquals(.5, Cache.artifactMinMuffle);
-    assertEquals(7, Cache.artifactRarityReturns.get("legendary"));
+    assertEquals(28, Cache.artifactRarityReturns.get("legendary"));
     loader.loadSafe(yaml("none.yml", "{}").toFile());
     assertEquals("m.currency.enchanted_dust", Cache.artifactReturnItem);
-    assertEquals(1, Cache.artifactDefaultReturn);
-    assertEquals(1, Cache.artifactRarityReturns.get("common"));
+    assertEquals(4, Cache.artifactDefaultReturn);
+    assertEquals(4, Cache.artifactRarityReturns.get("common"));
     assertEquals(0, Cache.artifactMinMuffle);
   }
 

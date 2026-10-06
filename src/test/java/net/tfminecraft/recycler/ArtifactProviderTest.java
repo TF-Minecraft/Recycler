@@ -52,14 +52,14 @@ class ArtifactProviderTest extends TestSupport {
       care.when(() -> ArtifactCareStore.readMuffle(legendary)).thenReturn(1.0);
       assertTrue(p.canHandle(legendary), "Fully muffled meets min_muffle 1.0");
       assertEquals(
-          List.of(new RecycleOutput("m.currency.enchanted_dust", 7)),
+          List.of(new RecycleOutput("m.currency.enchanted_dust", 28)),
           p.resolveBaseOutputs(legendary));
       assertEquals(
-          List.of(new RecycleOutput("m.currency.enchanted_dust", 1)),
+          List.of(new RecycleOutput("m.currency.enchanted_dust", 4)),
           p.resolveBaseOutputs(unknown),
           "A rarity not in the table uses default");
       assertEquals(
-          List.of(new RecycleOutput("m.currency.enchanted_dust", 1)),
+          List.of(new RecycleOutput("m.currency.enchanted_dust", 4)),
           p.resolveBaseOutputs(unrecorded),
           "Lore-only artifacts with no rarity use default");
       Cache.artifactRarityReturns = Map.of("legendary", 0);
@@ -91,7 +91,7 @@ class ArtifactProviderTest extends TestSupport {
       var result = chain.resolve(stack);
       assertEquals("ArtifactProvider", result.getProviderId());
       assertEquals(
-          List.of(new RecycleOutput("m.currency.enchanted_dust", 3)), result.getOutputs());
+          List.of(new RecycleOutput("m.currency.enchanted_dust", 12)), result.getOutputs());
       Cache.artifactRarityReturns = Map.of("rare", 0);
       assertFalse(
           chain.resolve(stack).isHandled(), "A rarity set to 0 is refused, not sent to recipes");
