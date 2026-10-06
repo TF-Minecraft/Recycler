@@ -26,7 +26,7 @@ class ArtifactProviderTest extends TestSupport {
   }
 
   @Test
-  void anyArtifactReturnsDustByRarityAndOthersAreRefused() {
+  void artifactsReturnDustByRarityAndMinMuffleGatesThem() {
     var p = new ArtifactProvider();
     assertEquals(16, p.priority());
     assertEquals(Cache.artifactReturnRate, p.returnRate());
@@ -35,14 +35,20 @@ class ArtifactProviderTest extends TestSupport {
     var unknown = artifact("mythic");
     var unrecorded = artifact(null);
     try (var art = mockStatic(Artifact.class);
-        var keys = mockStatic(ArtifactKeys.class)) {
+        var keys = mockStatic(ArtifactKeys.class);
+        var care = mockStatic(ArtifactCareStore.class)) {
       keys.when(ArtifactKeys::artifactRarity).thenReturn(RARITY);
       var found = mock(Artifact.class);
       for (var stack : List.of(legendary, unknown, unrecorded))
         art.when(() -> Artifact.fromItem(stack)).thenReturn(found);
       assertFalse(p.canHandle(plain));
       assertTrue(p.resolveBaseOutputs(plain).isEmpty());
-      assertTrue(p.canHandle(legendary));
+      assertTrue(p.canHandle(legendary), "An unmuffled artifact passes the default min_muffle 0");
+      Cache.artifactMinMuffle = 1.0;
+      care.when(() -> ArtifactCareStore.readMuffle(legendary)).thenReturn(0.5);
+      assertFalse(p.canHandle(legendary), "Below min_muffle is refused");
+      care.when(() -> ArtifactCareStore.readMuffle(legendary)).thenReturn(1.0);
+      assertTrue(p.canHandle(legendary), "Fully muffled meets min_muffle 1.0");
       assertEquals(
           List.of(new RecycleOutput("m.currency.enchanted_dust", 7)),
           p.resolveBaseOutputs(legendary));

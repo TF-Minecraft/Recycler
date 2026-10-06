@@ -143,19 +143,25 @@ public final class ConfigLoader implements LoaderInterface {
     }
 
     /**
-     * Listed rarities override the defaults; unlisted ones keep them. Negative amounts become 0.
+     * Listed rarities override the defaults; unlisted ones keep them. Negative amounts become 0;
+     * non-numbers keep the built-in amount.
      */
     private static void applyArtifactReturns(ConfigurationSection section) {
         var amounts = new java.util.HashMap<>(DEFAULT_ARTIFACT_RETURNS);
         Cache.artifactReturnItem = DEFAULT_ARTIFACT_ITEM;
         Cache.artifactDefaultReturn = 1;
+        Cache.artifactMinMuffle = 0.0;
         if (section != null) {
+            Cache.artifactMinMuffle = readRate(section, "min_muffle", 0.0, 0.0);
             Cache.artifactReturnItem = section.getString("item", DEFAULT_ARTIFACT_ITEM).trim();
             Cache.artifactDefaultReturn = readAmount(section, "default", 1);
             ConfigurationSection rarities = section.getConfigurationSection("rarities");
             if (rarities != null) {
                 for (String rarity : rarities.getKeys(false)) {
-                    amounts.put(rarity.trim().toLowerCase(java.util.Locale.ROOT), readAmount(rarities, rarity, 0));
+                    // A non-number keeps the built-in amount, or default for a new rarity.
+                    String id = rarity.trim().toLowerCase(java.util.Locale.ROOT);
+                    int fallback = amounts.getOrDefault(id, Cache.artifactDefaultReturn);
+                    amounts.put(id, readAmount(rarities, rarity, fallback));
                 }
             }
         }

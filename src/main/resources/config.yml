@@ -50,11 +50,14 @@ return_rates:
   # Magic artifacts: multiplies the artifact_returns amounts below. 1.0 gives exactly the table.
   artifacts: 1.0
 
-# Magic artifacts, muffled or not. They are found, not crafted, so they return a fixed
-# amount of `item` by rarity. Any aura stored in the artifact is lost.
+# Magic artifacts. They are found, not crafted, so they return a fixed amount of `item`
+# by rarity. Any aura stored in the artifact is lost.
 # Rarities not listed keep these defaults; set one to 0 to stop that rarity returning anything.
 # Older artifacts with no recorded rarity, or a rarity not in the list, use `default`.
 artifact_returns:
+  # Lowest muffle (0.0-1.0) an artifact needs before it can be recycled. 0.0 accepts any
+  # artifact; 1.0 accepts only fully muffled ones (about a day in a chest).
+  min_muffle: 0.0
   item: m.currency.enchanted_dust
   rarities:
     common: 1

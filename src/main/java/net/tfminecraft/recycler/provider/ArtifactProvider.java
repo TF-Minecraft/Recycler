@@ -8,14 +8,15 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import net.tfminecraft.magic.artifact.Artifact;
+import net.tfminecraft.magic.artifact.ArtifactCareStore;
 import net.tfminecraft.magic.artifact.ArtifactKeys;
 import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
 /**
- * Magic artifacts, muffled or not. They are found rather than crafted, so there is no
- * record of what went into them: the return is a fixed amount by rarity from
- * {@code artifact_returns}. Stored aura is not returned.
+ * Magic artifacts muffled at least {@code artifact_returns.min_muffle} (0 = any artifact).
+ * They are found rather than crafted, so there is no record of what went into them: the
+ * return is a fixed amount by rarity from {@code artifact_returns}. Stored aura is not returned.
  */
 public final class ArtifactProvider implements RecycleProvider {
 
@@ -31,7 +32,8 @@ public final class ArtifactProvider implements RecycleProvider {
 
     @Override
     public boolean canHandle(ItemStack item) {
-        return Artifact.fromItem(item) != null;
+        return Artifact.fromItem(item) != null
+                && ArtifactCareStore.readMuffle(item) >= Cache.artifactMinMuffle;
     }
 
     @Override

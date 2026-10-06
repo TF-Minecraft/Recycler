@@ -28,6 +28,7 @@ public final class Cache {
     public static java.util.Map<String, Integer> artifactRarityReturns = java.util.Map.of(
             "common", 1, "uncommon", 2, "rare", 3, "epic", 4, "legendary", 7);
     public static int artifactDefaultReturn = 1;
+    public static double artifactMinMuffle = 0.0;
     public static boolean blockConfirmWhenZeroYield = true;
 
     public static boolean depositWhitelistMode = false;
