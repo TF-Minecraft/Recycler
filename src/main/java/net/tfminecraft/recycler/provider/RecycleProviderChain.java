@@ -16,16 +16,19 @@ import net.tfminecraft.recycler.util.DurabilityScaler;
 public final class RecycleProviderChain {
 
     private final List<RecycleProvider> providers = new ArrayList<>();
+    private ArtifactProvider artifacts;
 
     public void rebuild() {
         providers.clear();
+        artifacts = null;
         if (Bukkit.getPluginManager().isPluginEnabled("AdvancedCrafting")) {
             providers.add(new AdvancedCraftingProvider());
             providers.add(new AlloyScrapProvider());
         }
         if (Bukkit.getPluginManager().isPluginEnabled("Magic")) {
             providers.add(new MagicGearProvider());
-            providers.add(new ArtifactProvider());
+            artifacts = new ArtifactProvider();
+            providers.add(artifacts);
         }
         if (Bukkit.getPluginManager().isPluginEnabled("GunsAndGadgets")) {
             providers.add(new GunsAndGadgetsProvider());
@@ -39,6 +42,9 @@ public final class RecycleProviderChain {
 
     public RecycleResult resolve(ItemStack item) {
         if (item == null || item.getType().isAir()) {
+            return RecycleResult.notHandled();
+        }
+        if (artifacts != null && artifacts.refuses(item)) {
             return RecycleResult.notHandled();
         }
         for (RecycleProvider provider : providers) {

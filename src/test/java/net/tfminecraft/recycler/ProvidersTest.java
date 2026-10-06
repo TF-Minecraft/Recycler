@@ -156,6 +156,9 @@ class ProvidersTest extends TestSupport {
         List.of(10, 11, 15, 16, 20, 25, Integer.MAX_VALUE),
         providers.stream().map(RecycleProvider::priority).toList());
     providers.clear();
+    var artifacts = RecycleProviderChain.class.getDeclaredField("artifacts");
+    artifacts.setAccessible(true);
+    artifacts.set(chain, null);
     var empty = mock(RecycleProvider.class);
     when(empty.canHandle(stack)).thenReturn(true);
     when(empty.resolveBaseOutputs(stack)).thenReturn(List.of());

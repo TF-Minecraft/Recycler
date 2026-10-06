@@ -32,8 +32,19 @@ public final class ArtifactProvider implements RecycleProvider {
 
     @Override
     public boolean canHandle(ItemStack item) {
-        return Artifact.fromItem(item) != null
-                && ArtifactCareStore.readMuffle(item) >= Cache.artifactMinMuffle;
+        return Artifact.fromItem(item) != null && !belowMinMuffle(item);
+    }
+
+    /**
+     * An artifact still under {@code min_muffle}. The chain refuses it outright so a
+     * recipe file matching the artifact cannot get around the threshold.
+     */
+    public boolean refuses(ItemStack item) {
+        return Artifact.fromItem(item) != null && belowMinMuffle(item);
+    }
+
+    private static boolean belowMinMuffle(ItemStack item) {
+        return ArtifactCareStore.readMuffle(item) < Cache.artifactMinMuffle;
     }
 
     @Override

@@ -47,6 +47,8 @@ class ArtifactProviderTest extends TestSupport {
       Cache.artifactMinMuffle = 1.0;
       care.when(() -> ArtifactCareStore.readMuffle(legendary)).thenReturn(0.5);
       assertFalse(p.canHandle(legendary), "Below min_muffle is refused");
+      assertTrue(p.refuses(legendary));
+      assertFalse(p.refuses(plain), "Only artifacts are refused");
       care.when(() -> ArtifactCareStore.readMuffle(legendary)).thenReturn(1.0);
       assertTrue(p.canHandle(legendary), "Fully muffled meets min_muffle 1.0");
       assertEquals(
@@ -64,6 +66,32 @@ class ArtifactProviderTest extends TestSupport {
       assertTrue(p.resolveBaseOutputs(legendary).isEmpty());
       Cache.artifactReturnItem = " ";
       assertTrue(p.resolveBaseOutputs(unknown).isEmpty());
+    }
+  }
+
+  @Test
+  void chainRefusesArtifactsBelowMinMuffleEvenWhenARecipeMatches() throws Exception {
+    yaml("recipes.yml", "recipes:\n  rod:\n    input: v.blaze_rod\n    outputs: ['v.stick 1']");
+    new net.tfminecraft.recycler.loader.RecipeLoader().loadFolder(dir.toFile());
+    var stack = artifact("rare");
+    when(api.getChecker().checkItemWithPath(stack, "v.blaze_rod")).thenReturn(true);
+    org.mockbukkit.mockbukkit.MockBukkit.createMockPlugin("Magic");
+    var chain = new RecycleProviderChain();
+    chain.rebuild();
+    try (var art = mockStatic(Artifact.class);
+        var keys = mockStatic(ArtifactKeys.class);
+        var care = mockStatic(ArtifactCareStore.class);
+        var gear = mockStatic(net.tfminecraft.magic.gear.GearProvenance.class)) {
+      keys.when(ArtifactKeys::artifactRarity).thenReturn(RARITY);
+      art.when(() -> Artifact.fromItem(stack)).thenReturn(mock(Artifact.class));
+      Cache.artifactMinMuffle = 1.0;
+      care.when(() -> ArtifactCareStore.readMuffle(stack)).thenReturn(0.5);
+      assertFalse(chain.resolve(stack).isHandled(), "The recipe file cannot bypass min_muffle");
+      care.when(() -> ArtifactCareStore.readMuffle(stack)).thenReturn(1.0);
+      var result = chain.resolve(stack);
+      assertEquals("ArtifactProvider", result.getProviderId());
+      assertEquals(
+          List.of(new RecycleOutput("m.currency.enchanted_dust", 3)), result.getOutputs());
     }
   }
 }
