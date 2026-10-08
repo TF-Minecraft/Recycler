@@ -10,10 +10,10 @@ It connects several crafting systems to a shared recycling experience, helping s
 
 - **Preview before committing** — see the expected material return in the station's interface before confirming the recycle.
 - **Condition-based recovery** — worn equipment yields less than an equivalent item at full durability.
-- **Crafting-system support** — recover materials from supported AdvancedCrafting items, Magic gear, GunsAndGadgets items, and goldsmithing jewelry. Each returns the materials that actually went into the item, not the recipe as it reads today; items crafted before their plugin recorded this cannot be recycled.
-- **Alloy scrap salvage** — recover recorded base materials and catalysts, including gems, from a failed AdvancedCrafting alloy forge. Each consumed material unit rolls independently.
-- **Artifact salvage** — break down Magic artifacts for enchanted dust by rarity (4 / 8 / 12 / 16 / 28 from Common to Legendary by default, about half what a Dust Mine node makes). Any artifact is accepted by default; `artifact_returns.min_muffle` can limit it to muffled ones. Stored aura is lost.
-- **Per-type return rates** — each kind of item (AdvancedCrafting gear, alloy scrap, Magic gear, guns, jewelry, artifacts, and recipe items) returns its own configurable share of the materials it was made from.
+- **Crafting-system support** — recover materials from supported AdvancedCrafting items, Magic gear, GunsAndGadgets items, and goldsmithing jewelry using their recorded crafting inputs.
+- **Alloy scrap salvage** — recover recorded base materials and eligible catalysts, including gems, from a failed AdvancedCrafting alloy forge.
+- **Artifact salvage** — break down Magic artifacts for enchanted dust according to rarity. Stored aura is lost.
+- **Per-type return rates** — tune material returns separately for crafted equipment, scrap, artifacts, and recipe-based salvage.
 - **Additional salvage recipes** — handle other supported items through dedicated recycling recipes, including runes that return enchanted dust.
 - **Protection for socketed items** — refuse supported mage weapons containing runes, and goldsmithing jewelry containing socketed gems, so dismantling does not silently consume them.
 - **Visible completion** — finish recycling with station sounds, particles, and recovered items appearing in the world.
@@ -24,13 +24,13 @@ It connects several crafting systems to a shared recycling experience, helping s
 
 Technical documentation is maintained in [TF-Minecraft/Docs](https://github.com/TF-Minecraft/Docs).
 
-Return rates and alloy scrap recovery are described in the [system design guide](https://github.com/TF-Minecraft/Docs/blob/main/projects/Recycler/docs/SYSTEM.md).
+Return rates, artifact yields, crafting records, and alloy scrap recovery are described in the [system design guide](https://github.com/TF-Minecraft/Docs/blob/main/projects/Recycler/docs/SYSTEM.md).
 
 ## Tests and coverage
 
-Run `mvn -B --no-transfer-progress clean verify` with Java 21 and the pinned plugin dependencies installed by `.github/scripts/prepare-release.sh` and the shared CI setup action. The suite uses JUnit 5, Mockito and MockBukkit to exercise configuration, integration providers, inventory events, escrow persistence/recovery, commands, plugin lifecycle and scheduled effects.
+Run `mvn -B --no-transfer-progress clean verify` with Java 21 after preparing the pinned private and shared dependencies using the [build dependency guide](https://github.com/TF-Minecraft/Docs/blob/main/PIPELINES.md#build-dependencies). The suite uses JUnit 5, Mockito and MockBukkit to exercise configuration, integration providers, inventory events, escrow persistence/recovery, commands, plugin lifecycle and scheduled effects.
 
-JaCoCo requires **100% line, branch and instruction coverage** across all production classes, with no exclusions. Reports are written to `target/site/jacoco/index.html` and `target/site/jacoco/jacoco.xml`; build and release CI publish the reports. Mocked external plugin APIs do not replace testing on a real Minecraft server.
+JaCoCo requires **100% line, branch and instruction coverage** across all production classes, with no exclusions. Coverage reports are written to `target/site/jacoco/index.html` and `target/site/jacoco/jacoco.xml`; build and release CI publish the reports. Surefire test results are in `target/surefire-reports/`. Mocked external plugin APIs do not replace testing on a real Minecraft server.
 
 ## License
 
