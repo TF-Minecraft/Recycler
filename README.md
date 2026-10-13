@@ -28,7 +28,7 @@ Return rates, artifact yields, crafting records, and alloy scrap recovery are de
 
 ## Tests and coverage
 
-Run `mvn -B --no-transfer-progress clean verify` with Java 21 after preparing the pinned private and shared dependencies using the [build dependency guide](https://github.com/TF-Minecraft/Docs/blob/main/PIPELINES.md#build-dependencies). The suite uses JUnit 5, Mockito and MockBukkit to exercise configuration, integration providers, inventory events, escrow persistence/recovery, commands, plugin lifecycle and scheduled effects.
+Run `tfmc-mvn -o -B clean verify` with Java 21 after preparing the pinned private and shared dependencies using the [build dependency guide](https://github.com/TF-Minecraft/Docs/blob/main/PIPELINES.md#build-dependencies). The suite uses JUnit 5, Mockito and MockBukkit to exercise configuration, integration providers, inventory events, escrow persistence/recovery, commands, plugin lifecycle and scheduled effects.
 
 JaCoCo requires **100% line, branch and instruction coverage** across all production classes, with no exclusions. Coverage reports are written to `target/site/jacoco/index.html` and `target/site/jacoco/jacoco.xml`; build and release CI publish the reports. Surefire test results are in `target/surefire-reports/`. Mocked external plugin APIs do not replace testing on a real Minecraft server.
 
