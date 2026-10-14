@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
@@ -126,8 +127,10 @@ public final class ReturnStore {
         long revision = validateDecision(decision, death, from, to);
         Path file = root.resolve("ownership/estates").resolve(death + ".json");
         JsonObject journal = estate(file, death, from);
+        List<JsonObject> rows = rows(from);
+        requireUnreserved(file, journal, rows);
         reconcilePlans(journal, decision);
-        for (JsonObject row : rows(from)) {
+        for (JsonObject row : rows) {
             if (journal.has(id(row).toString()) && "moved".equals(text(journal.getAsJsonObject(id(row).toString()), "phase")))
                 throw new Conflict("Transferred return reappeared: " + id(row));
             if (terminal(row)) continue;
@@ -154,11 +157,39 @@ public final class ReturnStore {
     public List<String> retained(UUID death, String decision, QueueIdentity.Owner from) throws IOException {
         Path file = root.resolve("ownership/estates").resolve(death + ".json");
         JsonObject journal = estate(file, death, from);
-        for (JsonObject row : rows(from)) if (journal.has(id(row).toString()) && "moved".equals(text(journal.getAsJsonObject(id(row).toString()), "phase")))
+        List<JsonObject> rows = rows(from);
+        requireUnreserved(file, journal, rows);
+        for (JsonObject row : rows) if (journal.has(id(row).toString()) && "moved".equals(text(journal.getAsJsonObject(id(row).toString()), "phase")))
             throw new Conflict("Transferred return reappeared: " + id(row));
         reconcilePlans(journal, decision);
         if (Files.exists(file)) write(file, journal);
         return receipts(journal);
+    }
+    /** Another death must not move a row still needed by an interrupted publication. */
+    private void requireUnreserved(Path current, JsonObject journal, List<JsonObject> rows) throws IOException {
+        var operations = new HashSet<UUID>();
+        for (JsonObject row : rows) operations.add(id(row));
+        for (String id : entries(journal)) {
+            JsonObject plan = journal.getAsJsonObject(id);
+            if (!"moved".equals(text(plan, "phase"))) {
+                requirePublishedTarget(plan);
+                operations.add(UUID.fromString(id));
+            }
+        }
+        Path folder = root.resolve("ownership/estates");
+        if (Files.exists(folder, java.nio.file.LinkOption.NOFOLLOW_LINKS) && !Files.isDirectory(folder))
+            throw new Conflict("Estate journal directory needs review");
+        try {
+            for (Path file : files(folder)) {
+                JsonObject raw = read(file);
+                JsonObject other = estate(file, UUID.fromString(text(raw, "death")), ref(raw, "from"));
+                if (file.equals(current)) continue;
+                for (String id : entries(other)) {
+                    if (!"moved".equals(text(other.getAsJsonObject(id), "phase")) && operations.contains(UUID.fromString(id)))
+                        throw new Conflict("Another death still reserves return publication: " + id);
+                }
+            }
+        } catch (RuntimeException ex) { throw new Conflict("Malformed estate reservation needs review"); }
     }
     private JsonObject estate(Path file, UUID death, QueueIdentity.Owner from) throws IOException {
         if (!Files.exists(file)) {
@@ -273,13 +304,17 @@ public final class ReturnStore {
         return intent;
     }
     private void apply(Path file, JsonObject plan, BooleanSupplier guard, boolean remove) throws IOException { apply(file, plan, plan, guard, remove); }
+    private void requirePublishedTarget(JsonObject plan) throws IOException {
+        if ("published".equals(text(plan, "phase")) && !Files.exists(path(text(plan, "target"))))
+            throw new Conflict("Published return target disappeared; recovery needs review");
+    }
     private void apply(Path file, JsonObject journal, JsonObject plan, BooleanSupplier guard, boolean remove) throws IOException {
-        backup(Base64.getDecoder().decode(text(plan, "before")));
         Path source = path(text(plan, "source")), target = path(text(plan, "target"));
+        requirePublishedTarget(plan);
+        backup(Base64.getDecoder().decode(text(plan, "before")));
         if (source.equals(target)) throw new Conflict("Return source and target are the same");
         if (Files.exists(source) && !hash(Files.readAllBytes(source)).equals(text(plan, "before-hash"))) throw new Conflict("Planned return source changed");
         if (!Files.exists(source) && "planned".equals(text(plan, "phase"))) throw new Conflict("Planned return source disappeared");
-        if (!Files.exists(source) && !Files.exists(target)) throw new Conflict("Both return copies disappeared");
         if (Files.exists(target)) {
             if (!hash(Files.readAllBytes(target)).equals(text(plan, "after-hash"))) throw new Conflict("Recipient return conflicts");
         } else {
