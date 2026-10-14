@@ -1,6 +1,7 @@
 import base64
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -162,6 +163,72 @@ class OwnershipRollbackTest(unittest.TestCase):
         report = module.inspect(self.root, kind='migration', apply=True, backup=Path(outside.name) / 'recovery')
         self.assertIn('error', report['journals'][0])
         self.assertEqual(expected, self.snapshot())
+
+    def test_unlistable_estate_directory_blocks_both_rollback_modes(self):
+        legacy, target, journal, plan, row = self.migration_fixture('planned')
+        self.completed_estate_fixture(target, row)
+        target.parent.mkdir()
+        target.write_bytes(base64.b64decode(plan['after']))
+        expected = self.snapshot()
+        folder = self.journal.parent
+        folder.chmod(0)
+        self.addCleanup(folder.chmod, 0o700)
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        try:
+            if os.geteuid() == 0:
+                self.skipTest('Root bypasses filesystem permission checks')
+            report = module.inspect(self.root, kind='migration', apply=True,
+                                    backup=Path(outside.name) / 'recovery')
+            self.assertIn('error', report['journals'][0])
+            self.assertNotIn('archived', report['journals'][0])
+            with self.assertRaises(PermissionError):
+                module.inspect(self.root, kind='estates')
+        finally:
+            folder.chmod(0o700)
+        self.assertEqual(expected, self.snapshot())
+
+    def test_dangling_or_non_directory_estate_path_cannot_prove_no_receipts(self):
+        legacy, target, journal, plan, row = self.migration_fixture('planned')
+        folder = self.journal.parent
+        folder.rmdir()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        for kind in ('symlink', 'file'):
+            with self.subTest(kind=kind):
+                if kind == 'symlink':
+                    folder.symlink_to(self.root / 'missing-estate-evidence', target_is_directory=True)
+                else:
+                    folder.write_bytes(b'not a directory')
+                report = module.inspect(self.root, kind='migration', apply=True,
+                                        backup=Path(outside.name) / kind)
+                self.assertIn('error', report['journals'][0])
+                self.assertNotIn('archived', report['journals'][0])
+                self.assertTrue(journal.exists())
+                self.assertTrue(legacy.exists())
+                with self.assertRaises(ValueError):
+                    module.inspect(self.root, kind='estates')
+                folder.unlink()
+
+    def test_missing_published_estate_target_conflicts_with_retained_source(self):
+        self.source.parent.mkdir()
+        self.source.write_bytes(self.before)
+        self.target.unlink()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        for phase in ('published', 'moved'):
+            with self.subTest(phase=phase):
+                self.journal.write_text(json.dumps(self.header(dict(self.plan, phase=phase))))
+                expected = self.snapshot()
+                report = module.inspect(self.root, apply=True, backup=Path(outside.name) / phase)
+                self.assertIn('conflict', report['journals'][0]['records'][0]['result'])
+                self.assertNotIn('archived', report['journals'][0])
+                self.assertEqual(expected, self.snapshot())
+        self.journal.write_text(json.dumps(self.header(dict(self.plan, phase='planned'))))
+        report = module.inspect(self.root, apply=True, backup=Path(outside.name) / 'planned')
+        self.assertEqual('restored', report['journals'][0]['records'][0]['result'])
+        self.assertEqual(self.before, self.source.read_bytes())
+        self.assertFalse(self.target.exists())
 
     def test_preview_and_apply_preserve_exact_current_and_original_bytes(self):
         report = module.inspect(self.root)
