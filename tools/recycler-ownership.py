@@ -166,7 +166,18 @@ def inspect(root, kind='estates', apply=False, backup=None):
                 row = {'id': operation, 'phase': plan['phase']}
                 source_ok = not source.exists() or digest(source.read_bytes()) == plan['before-hash']
                 target_ok = not target.exists() or digest(target.read_bytes()) == plan['after-hash']
-                if source == target or not source_ok or not target_ok or (not source.exists() and not target.exists()):
+                migration_progressed = False
+                if kind == 'migration':
+                    # A missing published copy may have been inherited or delivered.
+                    migration_progressed = plan['phase'] != 'planned' and not target.exists()
+                    for estate_file in (root / 'ownership' / 'estates').glob('*.json'):
+                        estate = load(estate_file.read_bytes())
+                        if not isinstance(estate, dict):
+                            raise ValueError('unreadable live estate evidence blocks migration rollback')
+                        # Even an exact restored source cannot erase a live estate receipt.
+                        if operation in estate:
+                            migration_progressed = True
+                if source == target or not source_ok or not target_ok or (not source.exists() and not target.exists()) or migration_progressed:
                     row['result'] = 'conflict; preserve files and reconcile current progress'
                 else:
                     row['result'] = 'safe offline restore'

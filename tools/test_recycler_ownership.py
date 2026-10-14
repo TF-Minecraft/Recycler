@@ -44,6 +44,125 @@ class OwnershipRollbackTest(unittest.TestCase):
         return {'format': 1, 'death': self.death, 'from-account': self.account,
                 'from-character': self.old, self.operation: plan}
 
+    def migration_fixture(self, phase):
+        self.journal.unlink()
+        self.target.unlink()
+        legacy = self.root / 'pending_returns' / (self.account + '.json')
+        legacy.parent.mkdir()
+        before = b'{"type":"DIAMOND","amount":5,"future":{"null":null}}'
+        legacy.write_bytes(before)
+        relative = str(legacy.relative_to(self.root))
+        operation = str(uuid.UUID(bytes=__import__('hashlib').md5(relative.encode()).digest(), version=3))
+        row = dict(self.original, id=operation, **{'legacy-source': relative, 'legacy-item': json.loads(before)})
+        target = self.root / 'character-returns' / self.old / (operation + '.json')
+        after = json.dumps(row).encode()
+        plan = {'format': 1, 'kind': 'migration', 'phase': phase, 'source': relative,
+                'target': str(target.relative_to(self.root)), 'from-account': self.account,
+                'to-account': self.account, 'to-character': self.old,
+                'before': base64.b64encode(before).decode(), 'after': base64.b64encode(after).decode(),
+                'before-hash': module.digest(before), 'after-hash': module.digest(after)}
+        journal = self.root / 'ownership/migration' / (operation + '.json')
+        journal.parent.mkdir()
+        journal.write_text(json.dumps(plan))
+        return legacy, target, journal, plan, row
+
+    def completed_estate_fixture(self, source, row):
+        pending = dict(row, **{'owner-account': self.recipient, 'owner-character': self.new})
+        target = self.root / 'character-returns' / self.new / (row['id'] + '.json')
+        target.write_text(json.dumps(dict(pending, state='delivered', remaining=0)))
+        before, after = json.dumps(row).encode(), json.dumps(pending).encode()
+        plan = dict(self.plan, source=str(source.relative_to(self.root)), target=str(target.relative_to(self.root)),
+                    before=base64.b64encode(before).decode(), after=base64.b64encode(after).decode(),
+                    **{'before-hash': module.digest(before), 'after-hash': module.digest(after)})
+        self.journal.write_text(json.dumps({'format': 1, 'death': self.death, 'from-account': self.account,
+                                           'from-character': self.old, row['id']: plan}))
+        return target
+
+    def snapshot(self):
+        return {str(path.relative_to(self.root)): path.read_bytes() for path in self.root.rglob('*') if path.is_file()}
+
+    def test_published_migration_missing_target_conflicts_after_completed_estate_delivery(self):
+        legacy, target, journal, plan, row = self.migration_fixture('moved')
+        recipient = self.completed_estate_fixture(target, row)
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        expected = self.snapshot()
+        estate = module.inspect(self.root, apply=True, backup=Path(outside.name) / 'estate')
+        self.assertIn('conflict', estate['journals'][0]['records'][0]['result'])
+        self.assertEqual(expected, self.snapshot())
+        for phase in ('published', 'moved'):
+            with self.subTest(phase=phase):
+                journal.write_text(json.dumps(dict(plan, phase=phase)))
+                expected = self.snapshot()
+                preview = module.inspect(self.root, kind='migration')
+                self.assertIn('conflict', preview['journals'][0]['records'][0]['result'])
+                applied = module.inspect(self.root, kind='migration', apply=True,
+                                         backup=Path(outside.name) / phase)
+                self.assertIn('conflict', applied['journals'][0]['records'][0]['result'])
+                self.assertNotIn('archived', applied['journals'][0])
+                self.assertEqual(expected, self.snapshot())
+                self.assertEqual(journal.read_bytes(), (Path(outside.name) / phase / journal.relative_to(self.root)).read_bytes())
+                self.assertIn('conflict', module.inspect(self.root, kind='migration')['journals'][0]['records'][0]['result'])
+        self.assertTrue(legacy.exists())
+        self.assertFalse(target.exists())
+        self.assertEqual('delivered', json.loads(recipient.read_bytes())['state'])
+
+    def test_live_estate_receipt_blocks_migration_even_when_original_target_is_restored(self):
+        legacy, target, journal, plan, row = self.migration_fixture('moved')
+        self.completed_estate_fixture(target, row)
+        target.parent.mkdir()
+        target.write_bytes(base64.b64decode(plan['after']))
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        for phase in ('planned', 'published', 'moved'):
+            with self.subTest(phase=phase):
+                journal.write_text(json.dumps(dict(plan, phase=phase)))
+                expected = self.snapshot()
+                report = module.inspect(self.root, kind='migration', apply=True,
+                                        backup=Path(outside.name) / phase)
+                self.assertIn('conflict', report['journals'][0]['records'][0]['result'])
+                self.assertNotIn('archived', report['journals'][0])
+                self.assertEqual(expected, self.snapshot())
+        self.assertTrue(legacy.exists())
+
+    def test_never_published_migration_without_target_or_estate_remains_safe(self):
+        legacy, target, journal, plan, row = self.migration_fixture('planned')
+        self.assertFalse(target.exists())
+        self.assertEqual('safe offline restore', module.inspect(self.root, kind='migration')['journals'][0]['records'][0]['result'])
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        before, journal_bytes = legacy.read_bytes(), journal.read_bytes()
+        result = module.inspect(self.root, kind='migration', apply=True, backup=Path(outside.name) / 'recovery')
+        self.assertEqual('restored', result['journals'][0]['records'][0]['result'])
+        self.assertEqual(before, legacy.read_bytes())
+        self.assertFalse(target.exists())
+        self.assertFalse(journal.exists())
+        self.assertEqual(journal_bytes, Path(result['journals'][0]['archived']).read_bytes())
+
+    def test_missing_published_migration_target_is_not_proof_of_no_effects(self):
+        legacy, target, journal, plan, row = self.migration_fixture('published')
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        for phase in ('published', 'moved'):
+            with self.subTest(phase=phase):
+                journal.write_text(json.dumps(dict(plan, phase=phase)))
+                expected = self.snapshot()
+                report = module.inspect(self.root, kind='migration', apply=True,
+                                        backup=Path(outside.name) / phase)
+                self.assertIn('conflict', report['journals'][0]['records'][0]['result'])
+                self.assertNotIn('archived', report['journals'][0])
+                self.assertEqual(expected, self.snapshot())
+
+    def test_unreadable_live_estate_evidence_cannot_prove_migration_untouched(self):
+        legacy, target, journal, plan, row = self.migration_fixture('planned')
+        self.journal.write_bytes(b'partial estate journal')
+        expected = self.snapshot()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        report = module.inspect(self.root, kind='migration', apply=True, backup=Path(outside.name) / 'recovery')
+        self.assertIn('error', report['journals'][0])
+        self.assertEqual(expected, self.snapshot())
+
     def test_preview_and_apply_preserve_exact_current_and_original_bytes(self):
         report = module.inspect(self.root)
         self.assertEqual('safe offline restore', report['journals'][0]['records'][0]['result'])
