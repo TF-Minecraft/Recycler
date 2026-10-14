@@ -199,6 +199,7 @@ def inspect(root, kind='estates', apply=False, backup=None):
                 archive = root / 'ownership' / 'rolled-back' / kind / file.name
                 if archive.exists():
                     raise ValueError('rolled-back journal archive exists')
+                report['applied'] = []
                 for source, target, before in actions:
                     for path in (source, target):
                         if path.exists():
@@ -208,6 +209,7 @@ def inspect(root, kind='estates', apply=False, backup=None):
                     if target.exists():
                         target.unlink()
                         force(target.parent)
+                    report['applied'].append(str(target.relative_to(root)))
                 for row in report['records']:
                     row['result'] = 'restored'
                 durable(archive, file.read_bytes())

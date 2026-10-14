@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import uuid
 
 spec = importlib.util.spec_from_file_location('recycler_ownership', Path(__file__).with_name('recycler-ownership.py'))
@@ -241,6 +242,42 @@ class OwnershipRollbackTest(unittest.TestCase):
         self.assertFalse(self.target.exists())
         self.assertEqual(self.after, (backup / self.target.relative_to(self.root)).read_bytes())
         self.assertIn('archived', applied['journals'][0])
+
+    def test_later_apply_failure_reports_completed_actions_and_keeps_original_error(self):
+        operation = str(uuid.uuid4())
+        source = self.source.parent / (operation + '.json')
+        target = self.target.parent / (operation + '.json')
+        before = json.dumps(dict(self.original, id=operation)).encode()
+        after = json.dumps(dict(self.moved, id=operation)).encode()
+        target.write_bytes(after)
+        second = dict(self.plan, source=str(source.relative_to(self.root)),
+                      target=str(target.relative_to(self.root)),
+                      before=base64.b64encode(before).decode(), after=base64.b64encode(after).decode(),
+                      **{'before-hash': module.digest(before), 'after-hash': module.digest(after)})
+        self.journal.write_text(json.dumps(dict(self.header(self.plan), **{operation: second})))
+        journal_bytes = self.journal.read_bytes()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        recovery = Path(outside.name) / 'recovery'
+        durable = module.durable
+        failure = OSError('second record write refused')
+        def fail_second(path, data):
+            if path == source:
+                raise failure
+            return durable(path, data)
+        with patch.object(module, 'durable', fail_second):
+            report = module.inspect(self.root, apply=True, backup=recovery)['journals'][0]
+        self.assertEqual(str(failure), report['error'])
+        self.assertEqual([str(self.target.relative_to(self.root))], report['applied'])
+        self.assertNotIn('archived', report)
+        self.assertEqual(journal_bytes, self.journal.read_bytes())
+        self.assertEqual(self.before, self.source.read_bytes())
+        self.assertFalse(self.target.exists())
+        self.assertFalse(source.exists())
+        self.assertEqual(after, target.read_bytes())
+        self.assertEqual(self.after, (recovery / self.target.relative_to(self.root)).read_bytes())
+        self.assertEqual(after, (recovery / target.relative_to(self.root)).read_bytes())
+        self.assertFalse((self.root / 'ownership/rolled-back/estates' / self.journal.name).exists())
 
     def test_later_delivery_or_gameplay_changes_block_restore(self):
         changed = dict(self.moved, state='delivered', remaining=0)
