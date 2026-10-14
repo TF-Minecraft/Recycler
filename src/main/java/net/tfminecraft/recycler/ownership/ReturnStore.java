@@ -33,8 +33,11 @@ public final class ReturnStore {
     public static String text(JsonObject row, String key) { return row.get(key).getAsString(); }
 
     public List<JsonObject> rows(QueueIdentity.Owner owner) throws IOException {
+        requireDirectory(root.resolve("character-returns"));
+        Path folder = root.resolve("character-returns").resolve(owner.character().toString());
+        requireDirectory(folder);
         List<JsonObject> rows = new ArrayList<>();
-        for (Path path : files(root.resolve("character-returns").resolve(owner.character().toString()))) {
+        for (Path path : files(folder)) {
             JsonObject row = read(path);
             validate(path, row);
             if (!owner.equals(owner(row))) throw new Conflict("Return owner differs from its character folder: " + path);
@@ -43,6 +46,7 @@ public final class ReturnStore {
         return rows;
     }
     public List<Path> allFiles() throws IOException {
+        requireDirectory(root.resolve("character-returns"));
         List<Path> result = new ArrayList<>();
         for (Path folder : files(root.resolve("character-returns"))) {
             if (Files.isRegularFile(folder)) result.add(folder);
@@ -78,48 +82,68 @@ public final class ReturnStore {
 
     public void migrate(QueueIdentity identity) throws IOException {
         if (!identity.heirsReady()) return;
+        requireJournalDirectories();
+        for (String kind : List.of("escrow", "pending_returns")) requireDirectory(root.resolve(kind));
+        Conflict failures = null;
         for (String kind : List.of("escrow", "pending_returns")) for (Path source : files(root.resolve(kind))) {
             if (!Files.isRegularFile(source)) continue;
             String relative = root.relativize(source).toString();
             UUID operation = UUID.nameUUIDFromBytes(relative.getBytes(StandardCharsets.UTF_8));
-            Path journal = root.resolve("ownership/migration").resolve(operation + ".json");
-            byte[] before = Files.readAllBytes(source);
-            JsonObject intent;
-            if (Files.exists(journal)) {
-                intent = read(journal);
-                validateIntent(intent, "migration");
-                if (!relative.equals(text(intent, "source")) || !hash(before).equals(text(intent, "before-hash")))
-                    throw new Conflict("Legacy return changed after its fixed plan: " + source);
-            } else {
-                UUID account;
-                try { account = UUID.fromString(source.getFileName().toString().substring(0, 36)); }
-                catch (IllegalArgumentException | IndexOutOfBoundsException ex) {
+            try {
+                Path journal = root.resolve("ownership/migration").resolve(operation + ".json");
+                byte[] before = Files.readAllBytes(source);
+                UUID account = legacyAccount(source);
+                if (account == null) {
                     JsonObject held = new JsonObject(); held.addProperty("source", relative);
                     held.addProperty("original", Base64.getEncoder().encodeToString(before)); held.addProperty("reason", "Unrecognized legacy account path");
                     Path evidence = root.resolve("ownership/unassigned").resolve(operation + ".json");
                     if (!Files.exists(evidence)) QueueFiles.write(evidence, QueueJson.bytes(held), false);
                     continue;
                 }
-                QueueIdentity.Owner to = identity.heir(account).filter(owner -> owner.account().equals(account)).orElse(null);
-                if (to == null) continue;
-                JsonObject after = new JsonObject();
-                after.addProperty("format", 1); after.addProperty("id", operation.toString()); setOwner(after, to);
-                after.addProperty("legacy-source", relative);
-                after.addProperty("state", "pending");
-                try { after.add("legacy-item", QueueJson.parse(new String(before, StandardCharsets.UTF_8))); }
-                catch (IOException ex) {
-                    after.addProperty("state", "held"); after.addProperty("reason", ex.getMessage());
-                    after.addProperty("legacy-bytes", Base64.getEncoder().encodeToString(before));
+                JsonObject intent;
+                if (Files.exists(journal)) {
+                    intent = read(journal);
+                    validateIntent(intent, "migration");
+                    if (!relative.equals(text(intent, "source")) || !hash(before).equals(text(intent, "before-hash")))
+                        throw new Conflict("Legacy return changed after its fixed plan: " + source);
+                } else {
+                    QueueIdentity.Owner to = identity.heir(account).filter(owner -> owner.account().equals(account)).orElse(null);
+                    if (to == null) continue;
+                    JsonObject after = new JsonObject();
+                    after.addProperty("format", 1); after.addProperty("id", operation.toString()); setOwner(after, to);
+                    after.addProperty("legacy-source", relative);
+                    after.addProperty("state", "pending");
+                    try { after.add("legacy-item", QueueJson.parse(new String(before, StandardCharsets.UTF_8))); }
+                    catch (IOException ex) {
+                        after.addProperty("state", "held"); after.addProperty("reason", ex.getMessage());
+                        after.addProperty("legacy-bytes", Base64.getEncoder().encodeToString(before));
+                    }
+                    // Legacy escrow has no durable evidence proving its inventory removal completed.
+                    if ("escrow".equals(kind)) { after.addProperty("state", "held"); after.addProperty("reason", "Legacy deposit outcome needs staff review"); }
+                    intent = intent("migration", source, file(to, operation), before, QueueJson.bytes(after));
+                    intent.addProperty("from-account", account.toString()); setRef(intent, "to", to);
+                    backup(before); write(journal, intent);
                 }
-                // Legacy escrow has no durable evidence proving its inventory removal completed.
-                if ("escrow".equals(kind)) { after.addProperty("state", "held"); after.addProperty("reason", "Legacy deposit outcome needs staff review"); }
-                intent = intent("migration", source, file(to, operation), before, QueueJson.bytes(after));
-                intent.addProperty("from-account", account.toString()); setRef(intent, "to", to);
-                backup(before); write(journal, intent);
+                validateMigration(intent, operation, source);
+                if (!"moved".equals(text(intent, "phase"))) apply(journal, intent, () -> true, false);
+            } catch (Conflict ex) {
+                Conflict held = new Conflict("Legacy return migration " + operation + " needs review: " + ex.getMessage());
+                held.initCause(ex);
+                if (failures == null) failures = held;
+                else failures.addSuppressed(held);
             }
-            validateMigration(intent, operation, source);
-            if (!"moved".equals(text(intent, "phase"))) apply(journal, intent, () -> true, false);
         }
+        if (failures != null) throw failures;
+    }
+
+    /** Matches the old pending delivery names, including escrow collision suffixes. */
+    private static UUID legacyAccount(Path source) {
+        String name = source.getFileName().toString();
+        try {
+            UUID account = UUID.fromString(name.substring(0, 36));
+            if (!name.substring(0, 36).equals(account.toString())) return null;
+            return name.equals(account + ".json") || name.startsWith(account + "-") && name.endsWith(".json") ? account : null;
+        } catch (IllegalArgumentException | IndexOutOfBoundsException ex) { return null; }
     }
 
     public List<String> transfer(UUID death, String decision, QueueIdentity.Owner from, QueueIdentity.Owner to,
@@ -178,8 +202,8 @@ public final class ReturnStore {
             }
         }
         Path folder = root.resolve("ownership/estates");
-        if (Files.exists(folder, java.nio.file.LinkOption.NOFOLLOW_LINKS) && !Files.isDirectory(folder))
-            throw new Conflict("Estate journal directory needs review");
+        requireDirectory(root.resolve("ownership"));
+        requireDirectory(folder);
         try {
             for (Path file : files(folder)) {
                 var plans = incomplete(file);
@@ -256,6 +280,7 @@ public final class ReturnStore {
         }
     }
     public void requireWritable(QueueIdentity.Owner owner) throws IOException {
+        requireJournalDirectories();
         try {
         for (Path file : files(root.resolve("ownership/migration"))) {
             JsonObject plan = read(file); validateIntent(plan, "migration");
@@ -269,8 +294,9 @@ public final class ReturnStore {
         } catch (RuntimeException ex) { throw new Conflict("Malformed ownership publication needs review"); }
     }
     public void requireMigrated(QueueIdentity.Owner owner) throws IOException {
+        for (String kind : List.of("escrow", "pending_returns")) requireDirectory(root.resolve(kind));
         for (String kind : List.of("escrow", "pending_returns")) for (Path source : files(root.resolve(kind))) {
-            if (source.getFileName().toString().toLowerCase(java.util.Locale.ROOT).startsWith(owner.account().toString())) {
+            if (owner.account().equals(legacyAccount(source))) {
                 UUID op = UUID.nameUUIDFromBytes(root.relativize(source).toString().getBytes(StandardCharsets.UTF_8));
                 Path file = root.resolve("ownership/migration").resolve(op + ".json");
                 if (!Files.exists(file)) throw new IOException("Reviewed legacy queue migration is not complete");
@@ -287,7 +313,8 @@ public final class ReturnStore {
             JsonObject planned = readPayload(plan, "after");
             validate(file(owner(planned), operation), planned);
             if (!ref(plan, "to").equals(owner(planned))) throw new Conflict("Legacy fixed recipient differs from payload");
-            UUID originalAccount = UUID.fromString(source.getFileName().toString().substring(0, 36));
+            UUID originalAccount = legacyAccount(source);
+            if (originalAccount == null) throw new Conflict("Legacy plan filename was not an old deliverable queue");
             // Older JARs delete delivered legacy files, so absence never proves the character copy is the only one.
             if (!Files.isRegularFile(source)) throw new Conflict("Retained legacy source is missing for migration " + operation + ": " + root.relativize(source));
             if (!originalAccount.toString().equals(text(plan, "from-account"))
@@ -376,6 +403,15 @@ public final class ReturnStore {
     static List<Path> files(Path folder) throws IOException {
         if (!Files.isDirectory(folder)) return List.of();
         try (var paths = Files.list(folder)) { return paths.filter(path -> !staging(path)).sorted().toList(); }
+    }
+    private void requireJournalDirectories() throws Conflict {
+        requireDirectory(root.resolve("ownership"));
+        requireDirectory(root.resolve("ownership/migration"));
+        requireDirectory(root.resolve("ownership/estates"));
+    }
+    private static void requireDirectory(Path folder) throws Conflict {
+        if (Files.exists(folder, java.nio.file.LinkOption.NOFOLLOW_LINKS) && !Files.isDirectory(folder))
+            throw new Conflict("Return storage directory needs review: " + folder);
     }
     /** Interrupted publication buffers are retained evidence, never authoritative queue or journal rows. */
     private static boolean staging(Path path) {

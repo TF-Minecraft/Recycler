@@ -31,7 +31,7 @@ public final class EscrowManager {
         if (store == null) store = new ReturnStore(Recycler.plugin.getDataFolder().toPath().resolve("data"));
         return store;
     }
-    public void loadPending() { run(() -> { store().migrate(identity); store().recover(); }); }
+    public void loadPending() { run(() -> store().migrate(identity)); run(() -> store().recover()); }
     public void savePending() { run(() -> {
         for (Path path : store().allFiles()) {
             try { JsonObject row = ReturnStore.read(path); if ("escrow".equals(ReturnStore.text(row, "state"))) pending(ReturnStore.owner(row)); }
@@ -201,7 +201,10 @@ public final class EscrowManager {
     private interface Work { void run() throws IOException; }
     private void run(Work work) {
         try { work.run(); }
-        catch (IOException | RuntimeException ex) { warning(ex.getMessage()); }
+        catch (IOException | RuntimeException ex) {
+            warning(ex.getMessage());
+            for (Throwable held : ex.getSuppressed()) warning(held.getMessage());
+        }
     }
     private void warning(String message) { Recycler.plugin.getLogger().warning("[Recycler] " + message); }
 }

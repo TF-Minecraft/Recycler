@@ -13,6 +13,41 @@ import org.bukkit.inventory.*;
 import org.junit.jupiter.api.Test;
 
 class EscrowManagerTest extends TestSupport {
+  @Test void startupStillRecoversHealthyEscrowAfterALegacyPublicationConflict() throws Exception {
+    var identity = mock(QueueIdentity.class);
+    when(identity.heirsReady()).thenReturn(true);
+    var first = new QueueIdentity.Owner(UUID.fromString("00000000-0000-0000-0000-000000000001"), UUID.randomUUID());
+    var second = new QueueIdentity.Owner(UUID.fromString("00000000-0000-0000-0000-000000000002"), UUID.randomUUID());
+    var later = new QueueIdentity.Owner(UUID.fromString("ffffffff-0000-0000-0000-000000000001"), UUID.randomUUID());
+    var healthy = new QueueIdentity.Owner(UUID.randomUUID(), UUID.randomUUID());
+    when(identity.heir(first.account())).thenReturn(Optional.of(first));
+    when(identity.heir(second.account())).thenReturn(Optional.of(second));
+    when(identity.heir(later.account())).thenReturn(Optional.of(later));
+    var e = new EscrowManager(dir.resolve("recovery"), identity);
+    var folder = e.store().root().resolve("pending_returns"); Files.createDirectories(folder);
+    Files.writeString(folder.resolve(first.account()+".json"), "{\"type\":\"DIAMOND\"}");
+    Files.writeString(folder.resolve(second.account()+".json"), "{\"type\":\"DIAMOND\"}");
+    e.loadPending();
+    var independent = e.store().create(healthy, UUID.randomUUID(), QueueJson.parse("{\"state\":\"escrow\",\"item-bytes\":\"opaque\",\"future\":null}"));
+    var evidence = new HashMap<java.nio.file.Path, byte[]>();
+    var operations = new ArrayList<UUID>();
+    for (var failed : List.of(first, second)) {
+      var op = ReturnStore.id(e.store().rows(failed).getFirst()); operations.add(op);
+      var journal = e.store().root().resolve("ownership/migration/"+op+".json");
+      var plan = ReturnStore.read(journal); plan.addProperty("phase", "published"); Files.write(journal, QueueJson.bytes(plan));
+      Files.delete(e.store().file(failed, op)); evidence.put(journal, Files.readAllBytes(journal));
+    }
+    var logger = mock(java.util.logging.Logger.class); when(plugin.getLogger()).thenReturn(logger);
+    Files.writeString(folder.resolve(later.account()+".json"), "{\"type\":\"EMERALD\"}");
+    new EscrowManager(e.store().root(), identity).loadPending();
+    assertEquals("pending", e.store().rows(healthy).getFirst().get("state").getAsString());
+    assertEquals(ReturnStore.id(independent), ReturnStore.id(e.store().rows(healthy).getFirst()));
+    assertTrue(e.store().rows(healthy).getFirst().get("future").isJsonNull());
+    assertEquals(1, e.store().rows(later).size());
+    for (var saved : evidence.entrySet()) assertArrayEquals(saved.getValue(), Files.readAllBytes(saved.getKey()));
+    for (UUID operation : operations) verify(logger).warning(contains(operation.toString()));
+    for (var failed : List.of(first, second)) assertThrows(ReturnStore.Conflict.class, () -> e.store().requireWritable(failed));
+  }
   @Test void exactItemBytesAndUnknownNullsSurviveDepositSaveRestartAndReturn() throws Exception {
     var e = new EscrowManager(); e.loadPending(); var player = server.addPlayer(); var token = token(player);
     ItemStack original = new ItemStack(Material.DIAMOND_SWORD); var meta = original.getItemMeta();
