@@ -28,7 +28,7 @@ public final class InventoryManager {
     // Keep the existing legacy text representation, formatting, and exact-string comparisons.
     @SuppressWarnings("deprecation")
     public void openMain(Player player, RecycleSession session) {
-        RecyclerGuiHolder holder = new RecyclerGuiHolder();
+        RecyclerGuiHolder holder = new RecyclerGuiHolder(session.getToken());
         var inv = Recycler.plugin.getServer().createInventory(holder, GridLayout.SIZE, RecyclerGuiHolder.TITLE);
         holder.setInventory(inv);
         fillShell(inv);
@@ -37,10 +37,13 @@ public final class InventoryManager {
     }
 
     public void refreshPreview(Player player, RecycleSession session, EscrowManager escrow) {
-        if (player.getOpenInventory().getTopInventory().getHolder() instanceof RecyclerGuiHolder holder) {
+        if (player.getOpenInventory().getTopInventory().getHolder() instanceof RecyclerGuiHolder holder
+                && java.util.Objects.equals(holder.getToken(), session.getToken())) {
             var inv = holder.getInventory();
             clearPreview(inv);
-            ItemStack escrowItem = escrow.getEscrow(session.getPlayerId());
+            ItemStack escrowItem;
+            try { escrowItem = escrow.getEscrow(session.getToken().owner()); }
+            catch (java.io.IOException ex) { player.sendMessage("Recycler item needs storage recovery."); return; }
             if (escrowItem != null) {
                 inv.setItem(GridLayout.SLOT_INPUT, session.createDisplayCopy(escrowItem));
                 RecycleResult result = providerChain.resolve(escrowItem);

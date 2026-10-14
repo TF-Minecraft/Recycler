@@ -14,14 +14,14 @@ import org.junit.jupiter.api.Test;
 
 class InventoryManagerTest extends TestSupport {
   @Test
-  void chancePreviewShowsPossibleAmountAndPreservesExistingLore() {
+  void chancePreviewShowsPossibleAmountAndPreservesExistingLore() throws Exception {
     var chain = mock(RecycleProviderChain.class);
     var manager = new InventoryManager(chain);
     var player = server.addPlayer();
-    var session = new RecycleSession(player.getUniqueId());
+    var session = new RecycleSession(player.getUniqueId(), token(player));
     var escrow = mock(EscrowManager.class);
     var input = item(Material.IRON_NUGGET);
-    when(escrow.getEscrow(session.getPlayerId())).thenReturn(input);
+    when(escrow.getEscrow(session.getToken().owner())).thenReturn(input);
     when(chain.resolve(input)).thenReturn(RecycleResult.of("scrap",
         List.of(new RecycleOutput("gem", 1, .01)), new RecycleContext(.5, 1, 1)));
     manager.openMain(player, session);
@@ -41,11 +41,11 @@ class InventoryManagerTest extends TestSupport {
     }
   }
   @Test
-  void shellPreviewReplacementAndCapacityLimit() {
+  void shellPreviewReplacementAndCapacityLimit() throws Exception {
     var chain = mock(RecycleProviderChain.class);
     var manager = new InventoryManager(chain);
     var player = server.addPlayer();
-    var session = new RecycleSession(player.getUniqueId());
+    var session = new RecycleSession(player.getUniqueId(), token(player));
     var escrow = mock(EscrowManager.class);
     player.openInventory(server.createInventory(null, 9));
     manager.refreshPreview(player, session, escrow);
@@ -57,7 +57,7 @@ class InventoryManagerTest extends TestSupport {
     manager.refreshPreview(player, session, escrow);
     assertNull(inv.getItem(10));
     var input = item(Material.STONE);
-    when(escrow.getEscrow(session.getPlayerId())).thenReturn(input);
+    when(escrow.getEscrow(session.getToken().owner())).thenReturn(input);
     when(chain.resolve(input)).thenReturn(RecycleResult.notHandled());
     manager.refreshPreview(player, session, escrow);
     assertEquals(input, inv.getItem(10));
@@ -92,5 +92,13 @@ class InventoryManagerTest extends TestSupport {
     assertEquals(Material.EMERALD, inv.getItem(0).getType());
     for (int slot : GridLayout.ARROW_SLOTS)
       assertEquals(Material.ARROW, inv.getItem(slot).getType());
+  }
+  @Test void latePreviewCannotAddressReplacementMenuAndUnreadableInputStaysHeld() throws Exception {
+    var chain=mock(RecycleProviderChain.class);var manager=new InventoryManager(chain);var player=server.addPlayer();
+    var token=token(player);var session=new RecycleSession(player.getUniqueId(),token);var escrow=mock(EscrowManager.class);
+    var foreign=new RecycleSession(player.getUniqueId(),new net.tfminecraft.recycler.ownership.QueueIdentity.Token(token.owner(),token.session()+1));
+    manager.openMain(player,foreign);manager.refreshPreview(player,session,escrow);verifyNoInteractions(escrow);
+    manager.openMain(player,session);when(escrow.getEscrow(token.owner())).thenThrow(new java.io.IOException("held"));manager.refreshPreview(player,session,escrow);
+    assertNull(player.getOpenInventory().getTopInventory().getItem(GridLayout.SLOT_INPUT));
   }
 }

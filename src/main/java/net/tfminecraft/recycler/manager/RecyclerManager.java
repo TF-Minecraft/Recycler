@@ -18,6 +18,8 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import java.io.IOException;
+import net.tfminecraft.recycler.ownership.QueueIdentity;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
@@ -58,7 +60,10 @@ public final class RecyclerManager implements Listener {
     }
 
     public RecycleSession getOrCreateSession(Player player) {
-        return sessions.computeIfAbsent(player.getUniqueId(), id -> new RecycleSession(id));
+        QueueIdentity.Token token = escrowManager.token(player);
+        RecycleSession old = sessions.get(player.getUniqueId());
+        if (old != null && !token.equals(old.getToken())) end(player, old.getToken());
+        return sessions.computeIfAbsent(player.getUniqueId(), id -> new RecycleSession(id, token));
     }
 
     @EventHandler
@@ -84,7 +89,9 @@ public final class RecyclerManager implements Listener {
             return;
         }
         event.setCancelled(true);
-        RecycleSession session = getOrCreateSession(player);
+        RecycleSession session;
+        try { session = getOrCreateSession(player); }
+        catch (IllegalArgumentException ex) { player.sendMessage(ex.getMessage()); return; }
         session.setStationLocation(block.getLocation());
         inventoryManager.openMain(player, session);
     }
@@ -94,13 +101,15 @@ public final class RecyclerManager implements Listener {
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        if (!(event.getView().getTopInventory().getHolder() instanceof RecyclerGuiHolder)) {
+        if (!(event.getView().getTopInventory().getHolder() instanceof RecyclerGuiHolder holder)) {
             return;
         }
 
         event.setCancelled(true);
 
-        RecycleSession session = getOrCreateSession(player);
+        RecycleSession session = sessions.get(player.getUniqueId());
+        if (session == null || !java.util.Objects.equals(holder.getToken(), session.getToken())
+                || !escrowManager.current(session.getToken(), player)) { player.closeInventory(); return; }
         int rawSlot = event.getRawSlot();
         int topSize = event.getView().getTopInventory().getSize();
         Inventory clickedInventory = event.getClickedInventory();
@@ -143,15 +152,14 @@ public final class RecyclerManager implements Listener {
         if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
-        if (!(event.getInventory().getHolder() instanceof RecyclerGuiHolder)) {
+        if (!(event.getInventory().getHolder() instanceof RecyclerGuiHolder holder)) {
             return;
         }
         RecycleSession session = sessions.get(player.getUniqueId());
-        if (session != null && session.isConfirmed()) {
-            return;
-        }
-        escrowManager.returnEscrow(player);
+        if (session == null || !java.util.Objects.equals(holder.getToken(), session.getToken()) || session.isConfirmed()) return;
         sessions.remove(player.getUniqueId());
+        queue(session);
+        if (escrowManager.current(session.getToken(), player)) escrowManager.deliverPending(player);
     }
 
     @EventHandler
@@ -159,8 +167,30 @@ public final class RecyclerManager implements Listener {
         Player player = event.getPlayer();
         RecycleSession session = sessions.remove(player.getUniqueId());
         if (session != null && !session.isConfirmed()) {
-            escrowManager.returnEscrow(player);
+            queue(session);
         }
+    }
+
+    public void end(Player player, QueueIdentity.Token token) {
+        RecycleSession session = sessions.get(player.getUniqueId());
+        if (session == null || !token.equals(session.getToken())) return;
+        sessions.remove(player.getUniqueId());
+        if (!session.isConfirmed()) queue(session);
+        if (player.getOpenInventory().getTopInventory().getHolder() instanceof RecyclerGuiHolder holder
+                && token.equals(holder.getToken())) player.closeInventory();
+    }
+
+    private void queue(RecycleSession session) {
+        try { escrowManager.pending(session.getToken().owner()); }
+        catch (IOException ex) { failure(ex); }
+    }
+
+    public boolean quiescent(QueueIdentity.Owner owner) {
+        return sessions.values().stream().noneMatch(session -> session.getToken().owner().equals(owner));
+    }
+
+    private void failure(Exception ex) {
+        Recycler.plugin.getLogger().warning("Recycler property held for recovery: " + ex.getMessage());
     }
 
     @EventHandler
@@ -170,7 +200,9 @@ public final class RecyclerManager implements Listener {
 
     private void handleConfirm(Player player, RecycleSession session) {
         UUID id = player.getUniqueId();
-        ItemStack escrow = escrowManager.getEscrow(id);
+        ItemStack escrow;
+        try { escrow = escrowManager.getEscrow(session.getToken().owner()); }
+        catch (IOException ex) { failure(ex); return; }
         if (escrow == null || escrow.getType().isAir()) {
             return;
         }
@@ -202,8 +234,10 @@ public final class RecyclerManager implements Listener {
 
     private void completeRecycle(Player player, RecycleSession session, UUID id, ItemStack input, String providerId,
             List<RecycleOutput> outputLines, List<ItemStack> outputs, Location stationLoc) {
+        if (!escrowManager.current(session.getToken(), player)) return;
+        try { escrowManager.consume(session.getToken().owner(), outputs); }
+        catch (IOException ex) { failure(ex); player.sendMessage("Recycler storage needs recovery; input was retained."); return; }
         session.setConfirmed(true);
-        escrowManager.clearEscrow(id);
         sessions.remove(id);
         player.closeInventory();
         Bukkit.getPluginManager().callEvent(
@@ -251,20 +285,17 @@ public final class RecyclerManager implements Listener {
         }
 
         ItemStack deposit = stack.clone();
-        clickedInventory.setItem(event.getSlot(), null);
-
-        UUID playerId = player.getUniqueId();
-        if (escrowManager.hasEscrow(playerId)) {
-            escrowManager.giveBackEscrow(player, false);
-        }
-        escrowManager.putEscrow(playerId, deposit);
+        try { escrowManager.deposit(player, session.getToken(), deposit, event.getSlot(), session.depositId()); session.deposited(); }
+        catch (IOException | RuntimeException ex) { failure(ex); player.sendMessage("Recycler storage needs recovery; inspect retained item intent."); return; }
         inventoryManager.refreshPreview(player, session, escrowManager);
         StationEffects.playInputAccept(player);
         StationEffects.playPreviewRefresh(player);
     }
 
     private void handleInputTakeOut(Player player, RecycleSession session) {
-        if (!escrowManager.hasEscrow(player.getUniqueId())) {
+        try { if (escrowManager.getEscrow(session.getToken().owner()) == null) return; }
+        catch (IOException ex) { failure(ex); return; }
+        if (!escrowManager.current(session.getToken(), player)) {
             return;
         }
         escrowManager.returnEscrow(player);

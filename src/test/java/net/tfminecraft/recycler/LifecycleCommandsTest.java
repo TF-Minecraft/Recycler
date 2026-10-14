@@ -45,7 +45,9 @@ class LifecycleCommandsTest extends TestSupport {
     try (var bukkit = mockStatic(Bukkit.class, CALLS_REAL_METHODS)) {
       var nameless = mock(org.bukkit.OfflinePlayer.class);
       bukkit.when(() -> Bukkit.getOfflinePlayer(offline.getUniqueId())).thenReturn(nameless);
+      when(escrow.describeQueues()).thenReturn(List.of("captured owner / operation (held)"));
       commands.onCommand(sender, command, "r", new String[] {"escrow", "list"});
+      verify(sender).sendMessage(contains("captured owner"));
       commands.onCommand(sender, command, "r", new String[] {"escrow", "return", "missing"});
     }
     commands.onCommand(sender, command, "r", new String[] {"escrow", "return", "Alice"});
@@ -100,6 +102,7 @@ class LifecycleCommandsTest extends TestSupport {
     assertNotNull(loaded.getProviderChain());
     assertInstanceOf(CommandManager.class, loaded.getCommand("recycler").getExecutor());
     assertTrue(loaded.reloadAll());
+    server.getScheduler().performTicks(2);
     loaded.onEnable();
     Files.writeString(loaded.getDataFolder().toPath().resolve("config.yml"), "bad: [");
     assertFalse(loaded.reloadAll());
@@ -163,5 +166,13 @@ class LifecycleCommandsTest extends TestSupport {
     doThrow(new IOException("close")).when(stream).close();
     doReturn(stream).when(loaded).getResource("read.yml");
     invoke(loaded, "copyResourceIfMissing", new Class[] {String.class}, "read.yml");
+  }
+  @Test void optionalUnavailableIdentityAndMigrationFailureStayScheduledAndHeld() throws Exception {
+    for(String name:List.of("TLibs","MMOItems","MythicLib","ItemsAdder"))MockBukkit.createMockPlugin(name);
+    var loaded=MockBukkit.load(Recycler.class);var escrow=loaded.getEscrowManager();
+    var identity=mock(net.tfminecraft.recycler.ownership.QueueIdentity.class);var field=EscrowManager.class.getDeclaredField("identity");field.setAccessible(true);field.set(escrow,identity);
+    var store=mock(net.tfminecraft.recycler.ownership.ReturnStore.class);field=EscrowManager.class.getDeclaredField("store");field.setAccessible(true);field.set(escrow,store);
+    doThrow(new IOException("migration blocked")).when(store).migrate(identity);
+    loaded.onEnable();server.getScheduler().performTicks(2);verify(store,atLeast(2)).migrate(identity);
   }
 }

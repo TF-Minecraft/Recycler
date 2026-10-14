@@ -19,7 +19,23 @@ class TestSupport {
   Recycler plugin;
   ItemAPI api;
   MockedStatic<TLibs> tlibs;
+  MockedStatic<net.tfminecraft.recycler.ownership.InventoryCheckpoint> inventoryCheckpoint;
   Map<java.lang.reflect.Field, Object> cache = new HashMap<>();
+  net.tfminecraft.tlibs.character.CharacterIdentity characters;
+  final Map<UUID, net.tfminecraft.tlibs.character.CharacterRef> heirs = new HashMap<>();
+  final Map<UUID, net.tfminecraft.tlibs.character.CharacterSession> sessions = new HashMap<>();
+  final Map<UUID, net.tfminecraft.tlibs.character.CharacterInfo> infos = new HashMap<>();
+
+  net.tfminecraft.tlibs.character.CharacterRef reviewed(UUID account) {
+    return heirs.computeIfAbsent(account, owner -> {
+      var ref = new net.tfminecraft.tlibs.character.CharacterRef(owner, UUID.randomUUID());
+      infos.put(ref.characterId(), new net.tfminecraft.tlibs.character.CharacterInfo(ref, "Reviewed", net.tfminecraft.tlibs.character.CharacterStatus.ALIVE, null, Set.of(), 0, null));
+      return ref;
+    });
+  }
+  net.tfminecraft.recycler.ownership.QueueIdentity.Token token(org.bukkit.entity.Player player) {
+    return net.tfminecraft.recycler.ownership.QueueIdentity.load().current(player).orElseThrow();
+  }
 
   @BeforeEach
   void baseSetup() throws Exception {
@@ -31,7 +47,26 @@ class TestSupport {
     when(plugin.getServer()).thenReturn(server);
     when(plugin.isEnabled()).thenReturn(true);
     when(plugin.getName()).thenReturn("Recycler");
+    when(plugin.getPluginLoader()).thenReturn(MockBukkit.createMockPlugin("RecyclerFixture").getPluginLoader());
+    when(plugin.getDescription()).thenReturn(new org.bukkit.plugin.PluginDescriptionFile("Recycler", "test", Recycler.class.getName()));
+    characters = mock(net.tfminecraft.tlibs.character.CharacterIdentity.class);
+    server.getServicesManager().register(net.tfminecraft.tlibs.character.CharacterIdentity.class, characters, plugin, org.bukkit.plugin.ServicePriority.Normal);
+    when(characters.currentSession(any())).thenAnswer(call -> {
+      var p = (org.bukkit.entity.Player) call.getArgument(0);
+      if (sessions.containsKey(p.getUniqueId())) return Optional.ofNullable(sessions.get(p.getUniqueId()));
+      var session = new net.tfminecraft.tlibs.character.CharacterSession(reviewed(p.getUniqueId()), 1);
+      sessions.put(p.getUniqueId(), session); return Optional.of(session);
+    });
+    when(characters.isCurrent(any())).thenAnswer(call -> {
+      var s = (net.tfminecraft.tlibs.character.CharacterSession) call.getArgument(0);
+      return s.equals(sessions.get(s.ref().ownerId()));
+    });
+    when(characters.info(any())).thenAnswer(call -> Optional.ofNullable(infos.get(call.getArgument(0))));
+    when(characters.legacyHeirsReady()).thenReturn(true);
+    when(characters.legacyHeir(any())).thenAnswer(call -> Optional.of(reviewed(call.getArgument(0))));
     api = mock(ItemAPI.class, RETURNS_DEEP_STUBS);
+    // MockBukkit saveData is unimplemented; effect/intent tests inject failures at this Paper boundary.
+    inventoryCheckpoint = mockStatic(net.tfminecraft.recycler.ownership.InventoryCheckpoint.class);
     when(api.getCreator().getItemFromPath(anyString())).thenReturn(null);
     when(api.getChecker().getAsStringPath(any())).thenReturn(null);
     tlibs = mockStatic(TLibs.class);
@@ -43,6 +78,7 @@ class TestSupport {
   @AfterEach
   void baseCleanup() throws Exception {
     tlibs.close();
+    inventoryCheckpoint.close();
     MockBukkit.unmock();
     Recycler.plugin = null;
     for (var e : cache.entrySet()) e.getKey().set(null, e.getValue());

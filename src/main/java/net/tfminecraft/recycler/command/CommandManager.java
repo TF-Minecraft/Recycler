@@ -55,21 +55,8 @@ public final class CommandManager implements CommandExecutor, TabCompleter {
             return true;
         }
         if ("list".equalsIgnoreCase(args[1])) {
-            List<UUID> memoryIds = escrow.listMemoryEscrowPlayerIds();
-            int pendingCount = escrow.countPendingFiles();
-            sender.sendMessage("§6Recycler escrow:");
-            sender.sendMessage("§7In-memory (online): §f" + memoryIds.size());
-            for (UUID id : memoryIds) {
-                Player online = Bukkit.getPlayer(id);
-                String name = online != null ? online.getName() : id.toString();
-                sender.sendMessage("§8- §f" + name);
-            }
-            sender.sendMessage("§7Pending return files: §f" + pendingCount);
-            for (UUID id : escrow.listPendingPlayerIds()) {
-                OfflinePlayer offline = Bukkit.getOfflinePlayer(id);
-                String name = offline.getName() != null ? offline.getName() : id.toString();
-                sender.sendMessage("§8- §f" + name + " §7(pending)");
-            }
+            sender.sendMessage("§6Recycler character queues:");
+            for (String row : escrow.describeQueues()) sender.sendMessage("§8- §f" + row);
             return true;
         }
         if ("return".equalsIgnoreCase(args[1])) {
@@ -84,7 +71,7 @@ public final class CommandManager implements CommandExecutor, TabCompleter {
                 boolean hadPending = escrow.hasPending(online.getUniqueId());
                 escrow.adminReturn(online);
                 if (hadEscrow || hadPending) {
-                    sender.sendMessage("§aReturned escrow to §f" + online.getName() + "§a.");
+                    sender.sendMessage("§aRequested return for the current character of §f" + online.getName() + "§a. Full inventory or held intents remain queued.");
                 } else {
                     sender.sendMessage("§7No escrow or pending return for §f" + online.getName() + "§7.");
                 }
@@ -94,7 +81,7 @@ public final class CommandManager implements CommandExecutor, TabCompleter {
                 OfflinePlayer offline = Bukkit.getOfflinePlayer(id);
                 if (offline.getName() != null && offline.getName().equalsIgnoreCase(targetName)) {
                     sender.sendMessage("§7Player offline. Pending return file exists for §f" + offline.getName()
-                            + "§7 - will deliver on join.");
+                            + "§7 - will deliver when its owning living character starts playing.");
                     return true;
                 }
             }

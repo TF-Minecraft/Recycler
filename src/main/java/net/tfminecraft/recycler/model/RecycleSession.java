@@ -11,12 +11,23 @@ import org.bukkit.inventory.ItemStack;
 public final class RecycleSession {
 
     private final UUID playerId;
+    private final net.tfminecraft.recycler.ownership.QueueIdentity.Token token;
     private Location stationLocation;
     private boolean confirmed;
+    private UUID depositId;
 
     public RecycleSession(UUID playerId) {
-        this.playerId = playerId;
+        this(playerId, null);
     }
+
+    public RecycleSession(UUID playerId, net.tfminecraft.recycler.ownership.QueueIdentity.Token token) {
+        this.playerId = playerId;
+        this.token = token;
+    }
+
+    public net.tfminecraft.recycler.ownership.QueueIdentity.Token getToken() { return token; }
+    public UUID depositId() { if (depositId == null) depositId = UUID.randomUUID(); return depositId; }
+    public void deposited() { depositId = null; }
 
     public UUID getPlayerId() {
         return playerId;
