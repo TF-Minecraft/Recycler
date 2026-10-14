@@ -20,6 +20,7 @@ public final class ReturnStore {
     }
     private static final List<String> STATES = List.of("depositing", "escrow", "pending", "delivering", "held", "delivered", "consumed", "cancelled");
     private final Path root;
+    private final java.util.Map<Path, java.util.Map.Entry<String, java.util.Map<UUID, List<QueueIdentity.Owner>>>> validated = new java.util.HashMap<>();
     public ReturnStore(Path root) { this.root = root.toAbsolutePath().normalize(); }
     public Path root() { return root; }
     public Path file(QueueIdentity.Owner owner, UUID id) { return root.resolve("character-returns").resolve(owner.character().toString()).resolve(id + ".json"); }
@@ -181,13 +182,10 @@ public final class ReturnStore {
             throw new Conflict("Estate journal directory needs review");
         try {
             for (Path file : files(folder)) {
-                JsonObject raw = read(file);
-                JsonObject other = estate(file, UUID.fromString(text(raw, "death")), ref(raw, "from"));
+                var plans = incomplete(file);
                 if (file.equals(current)) continue;
-                for (String id : entries(other)) {
-                    if (!"moved".equals(text(other.getAsJsonObject(id), "phase")) && operations.contains(UUID.fromString(id)))
-                        throw new Conflict("Another death still reserves return publication: " + id);
-                }
+                for (UUID id : plans.keySet())
+                    if (operations.contains(id)) throw new Conflict("Another death still reserves return publication: " + id);
             }
         } catch (RuntimeException ex) { throw new Conflict("Malformed estate reservation needs review"); }
     }
@@ -195,7 +193,9 @@ public final class ReturnStore {
         if (!Files.exists(file)) {
             JsonObject journal = new JsonObject(); journal.addProperty("format", 1); journal.addProperty("death", death.toString()); setRef(journal, "from", from); return journal;
         }
-        JsonObject journal = read(file);
+        return estate(file, read(file), death, from);
+    }
+    private JsonObject estate(Path file, JsonObject journal, UUID death, QueueIdentity.Owner from) throws IOException {
         try {
             if (!file.getFileName().toString().equals(death + ".json") || !journal.get("format").toString().equals("1")
                     || !death.toString().equals(text(journal, "death")) || !from.equals(ref(journal, "from")))
@@ -215,6 +215,23 @@ public final class ReturnStore {
             }
         } catch (RuntimeException ex) { throw new Conflict("Malformed estate journal"); }
         return journal;
+    }
+    /** Incomplete plans of a fully validated journal. Validation depends only on its path and exact bytes. */
+    private java.util.Map<UUID, List<QueueIdentity.Owner>> incomplete(Path file) throws IOException {
+        String source = Files.readString(file, StandardCharsets.UTF_8);
+        String digest = hash(source.getBytes(StandardCharsets.UTF_8));
+        var known = validated.get(file);
+        if (known != null && known.getKey().equals(digest)) return known.getValue();
+        JsonObject raw = parse(file, source);
+        JsonObject journal = estate(file, raw, UUID.fromString(text(raw, "death")), ref(raw, "from"));
+        var plans = new java.util.LinkedHashMap<UUID, List<QueueIdentity.Owner>>();
+        for (String id : entries(journal)) {
+            JsonObject plan = journal.getAsJsonObject(id);
+            if (!"moved".equals(text(plan, "phase"))) plans.put(UUID.fromString(id), List.of(ref(plan, "from"), ref(plan, "to")));
+        }
+        var result = java.util.Collections.unmodifiableMap(plans);
+        validated.put(file, java.util.Map.entry(digest, result));
+        return result;
     }
     private static long validateDecision(String decision, UUID death, QueueIdentity.Owner from, QueueIdentity.Owner to) throws IOException {
         var suffix = java.util.regex.Pattern.compile(", revision=(0|[1-9][0-9]*)]$").matcher(decision);
@@ -246,15 +263,9 @@ public final class ReturnStore {
             if (!"moved".equals(text(plan, "phase")) && owner.equals(owner(readPayload(plan, "after"))))
                 throw new Conflict("Legacy return publication needs recovery");
         }
-        for (Path file : files(root.resolve("ownership/estates"))) {
-            JsonObject raw = read(file);
-            JsonObject journal = estate(file, UUID.fromString(text(raw, "death")), ref(raw, "from"));
-            for (String id : entries(journal)) {
-                JsonObject plan = journal.getAsJsonObject(id); validateIntent(plan, "estate");
-                if (!"moved".equals(text(plan, "phase")) && (owner.equals(ref(plan, "from")) || owner.equals(ref(plan, "to"))))
-                    throw new Conflict("Return ownership publication needs recovery: " + id);
-            }
-        }
+        for (Path file : files(root.resolve("ownership/estates")))
+            for (var plan : incomplete(file).entrySet())
+                if (plan.getValue().contains(owner)) throw new Conflict("Return ownership publication needs recovery: " + plan.getKey());
         } catch (RuntimeException ex) { throw new Conflict("Malformed ownership publication needs review"); }
     }
     public void requireMigrated(QueueIdentity.Owner owner) throws IOException {
@@ -277,6 +288,8 @@ public final class ReturnStore {
             validate(file(owner(planned), operation), planned);
             if (!ref(plan, "to").equals(owner(planned))) throw new Conflict("Legacy fixed recipient differs from payload");
             UUID originalAccount = UUID.fromString(source.getFileName().toString().substring(0, 36));
+            // Older JARs delete delivered legacy files, so absence never proves the character copy is the only one.
+            if (!Files.isRegularFile(source)) throw new Conflict("Retained legacy source is missing for migration " + operation + ": " + root.relativize(source));
             if (!originalAccount.toString().equals(text(plan, "from-account"))
                     || !owner(planned).account().toString().equals(text(plan, "from-account"))
                     || !text(planned, "legacy-source").equals(root.relativize(source).toString())
@@ -353,8 +366,8 @@ public final class ReturnStore {
         if (!Files.exists(file)) QueueFiles.write(file, bytes, false);
         else if (!hash(Files.readAllBytes(file)).equals(hash(bytes))) throw new Conflict("Immutable return backup changed");
     }
-    public static JsonObject read(Path path) throws IOException {
-        String source = Files.readString(path, StandardCharsets.UTF_8);
+    public static JsonObject read(Path path) throws IOException { return parse(path, Files.readString(path, StandardCharsets.UTF_8)); }
+    private static JsonObject parse(Path path, String source) throws Conflict {
         try { return QueueJson.parse(source); }
         catch (IOException ex) { throw new Conflict("Return document needs recovery: " + path + " (" + ex.getMessage() + ")"); }
     }
@@ -362,7 +375,13 @@ public final class ReturnStore {
     static void write(Path path, JsonObject raw) throws IOException { QueueFiles.write(path, QueueJson.bytes(raw), true); }
     static List<Path> files(Path folder) throws IOException {
         if (!Files.isDirectory(folder)) return List.of();
-        try (var paths = Files.list(folder)) { return paths.sorted().toList(); }
+        try (var paths = Files.list(folder)) { return paths.filter(path -> !staging(path)).sorted().toList(); }
+    }
+    /** Interrupted publication buffers are retained evidence, never authoritative queue or journal rows. */
+    private static boolean staging(Path path) {
+        String name = path.getFileName().toString();
+        return name.startsWith("recycler-") && name.endsWith(".tmp")
+                && Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS);
     }
     static String hash(byte[] bytes) { return java.util.HexFormat.of().formatHex(digest(bytes)); }
     private static byte[] digest(byte[] bytes) {
