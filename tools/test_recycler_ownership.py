@@ -83,6 +83,28 @@ class OwnershipRollbackTest(unittest.TestCase):
     def snapshot(self):
         return {str(path.relative_to(self.root)): path.read_bytes() for path in self.root.rglob('*') if path.is_file()}
 
+    def test_missing_retained_migration_source_cannot_prove_no_old_jar_delivery(self):
+        legacy, target, journal, plan, row = self.migration_fixture('moved')
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(base64.b64decode(plan['after']))
+        legacy.unlink()
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        for phase in ('planned', 'published', 'moved'):
+            with self.subTest(phase=phase):
+                journal.write_text(json.dumps(dict(plan, phase=phase)))
+                expected = self.snapshot()
+                preview = module.inspect(self.root, kind='migration')
+                self.assertIn('conflict', preview['journals'][0]['records'][0]['result'])
+                result = module.inspect(self.root, kind='migration', apply=True,
+                                        backup=Path(outside.name) / phase)
+                self.assertIn('conflict', result['journals'][0]['records'][0]['result'])
+                self.assertNotIn('archived', result['journals'][0])
+                self.assertFalse(legacy.exists())
+                self.assertEqual(expected, self.snapshot())
+                self.assertEqual(journal.read_bytes(),
+                                 (Path(outside.name) / phase / journal.relative_to(self.root)).read_bytes())
+
     def test_published_migration_missing_target_conflicts_after_completed_estate_delivery(self):
         legacy, target, journal, plan, row = self.migration_fixture('moved')
         recipient = self.completed_estate_fixture(target, row)

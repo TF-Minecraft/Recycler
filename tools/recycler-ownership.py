@@ -176,7 +176,8 @@ def inspect(root, kind='estates', apply=False, backup=None):
                     elif plan['before'] != target_row.get('legacy-bytes'):
                         raise ValueError('legacy plan changes opaque bytes')
                 row = {'id': operation, 'phase': plan['phase']}
-                source_ok = not source.exists() or digest(source.read_bytes()) == plan['before-hash']
+                # Older JARs delete delivered legacy files; absence cannot prove an unused return.
+                source_ok = (source.exists() and digest(source.read_bytes()) == plan['before-hash']) if kind == 'migration' else (not source.exists() or digest(source.read_bytes()) == plan['before-hash'])
                 target_ok = not target.exists() or digest(target.read_bytes()) == plan['after-hash']
                 published_missing = plan['phase'] != 'planned' and not target.exists()
                 migration_progressed = False
