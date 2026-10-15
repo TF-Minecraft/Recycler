@@ -14,7 +14,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 
 import net.tfminecraft.recycler.Messages;
 import net.tfminecraft.recycler.Recycler;
@@ -27,17 +26,20 @@ public final class CommandManager implements CommandExecutor, TabCompleter {
 
     private List<String> pendingOwnerNames = List.of();
 
-    public void startCompletionRefresh(Plugin plugin) {
-        refreshPendingOwnerNames();
-        plugin.getServer().getScheduler().runTaskTimer(plugin, this::refreshPendingOwnerNames, 100L, 100L);
+    public void trackPendingOwners() {
+        Recycler.plugin.getEscrowManager().store().onPendingOwnersChanged(this::refreshPendingOwnerNames);
     }
 
-    private void refreshPendingOwnerNames() {
-        // Queue discovery and offline-name resolution may read disk; never do them while typing.
+    private void refreshPendingOwnerNames(List<UUID> owners) {
+        // Resolve profiles only when the authoritative queue index changes, never while typing.
         TreeSet<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-        for (UUID owner : Recycler.plugin.getEscrowManager().listPendingPlayerIds()) {
-            String name = Bukkit.getOfflinePlayer(owner).getName();
-            if (name != null) names.add(name);
+        for (UUID owner : owners) {
+            try {
+                String name = Bukkit.getOfflinePlayer(owner).getName();
+                if (name != null) names.add(name);
+            } catch (RuntimeException ex) {
+                Recycler.plugin.getLogger().warning("Recycler pending owner name unavailable: " + owner + " " + ex.getMessage());
+            }
         }
         pendingOwnerNames = List.copyOf(names);
     }
