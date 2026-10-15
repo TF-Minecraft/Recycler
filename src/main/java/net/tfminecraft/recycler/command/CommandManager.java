@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.TreeSet;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -13,6 +14,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 
 import net.tfminecraft.recycler.Messages;
 import net.tfminecraft.recycler.Recycler;
@@ -22,6 +24,23 @@ public final class CommandManager implements CommandExecutor, TabCompleter {
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of("reload", "escrow");
     private static final List<String> ESCROW_SUBCOMMANDS = List.of("list", "return");
+
+    private List<String> pendingOwnerNames = List.of();
+
+    public void startCompletionRefresh(Plugin plugin) {
+        refreshPendingOwnerNames();
+        plugin.getServer().getScheduler().runTaskTimer(plugin, this::refreshPendingOwnerNames, 100L, 100L);
+    }
+
+    private void refreshPendingOwnerNames() {
+        // Queue discovery and offline-name resolution may read disk; never do them while typing.
+        TreeSet<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (UUID owner : Recycler.plugin.getEscrowManager().listPendingPlayerIds()) {
+            String name = Bukkit.getOfflinePlayer(owner).getName();
+            if (name != null) names.add(name);
+        }
+        pendingOwnerNames = List.copyOf(names);
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -104,11 +123,12 @@ public final class CommandManager implements CommandExecutor, TabCompleter {
             return filterPrefix(ESCROW_SUBCOMMANDS, args[1]);
         }
         if (args.length == 3 && "escrow".equalsIgnoreCase(args[0]) && "return".equalsIgnoreCase(args[1])) {
-            List<String> names = new ArrayList<>();
+            TreeSet<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+            names.addAll(pendingOwnerNames);
             for (Player player : Bukkit.getOnlinePlayers()) {
                 names.add(player.getName());
             }
-            return filterPrefix(names, args[2]);
+            return filterPrefix(new ArrayList<>(names), args[2]);
         }
         return Collections.emptyList();
     }

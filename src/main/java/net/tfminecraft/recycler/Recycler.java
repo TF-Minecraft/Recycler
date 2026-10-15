@@ -49,6 +49,7 @@ public class Recycler extends JavaPlugin {
         }
         getServer().getPluginManager().registerEvents(recyclerManager, this);
         escrowManager.loadPending();
+        commandManager.startCompletionRefresh(this);
         if (escrowManager.identity() instanceof net.tfminecraft.recycler.ownership.CharacterQueueBridge)
             net.tfminecraft.recycler.ownership.CharacterQueueBridge.start(this);
         getServer().getScheduler().runTaskTimer(this, () -> {

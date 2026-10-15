@@ -91,6 +91,60 @@ class LifecycleCommandsTest extends TestSupport {
   }
 
   @Test
+  void returnCompletionIncludesRecognizedOfflineQueuesWithoutPerKeystrokeDiscovery() throws Exception {
+    var escrow = spy(new EscrowManager());
+    when(plugin.getEscrowManager()).thenReturn(escrow);
+    var alice = server.addPlayer("Alice");
+    var aliceRow = queued(escrow, token(alice).owner(), "pending");
+    alice.disconnect();
+    var bob = server.addPlayer("Bob");
+    queued(escrow, token(bob).owner(), "escrow");
+    var held = server.addPlayer("Herbie");
+    queued(escrow, token(held).owner(), "held");
+    held.disconnect();
+    var finished = server.addPlayer("Finished");
+    queued(escrow, token(finished).owner(), "delivered");
+    finished.disconnect();
+    UUID unknownId = UUID.randomUUID();
+    queued(escrow, new net.tfminecraft.recycler.ownership.QueueIdentity.Owner(unknownId, UUID.randomUUID()), "pending");
+    var sender = mock(CommandSender.class);
+    when(sender.hasPermission("recycler.admin")).thenReturn(true);
+    var commands = new CommandManager();
+    try (var bukkit = mockStatic(Bukkit.class, CALLS_REAL_METHODS)) {
+      var unknown = mock(OfflinePlayer.class);
+      bukkit.when(() -> Bukkit.getOfflinePlayer(unknownId)).thenReturn(unknown);
+      commands.startCompletionRefresh(plugin);
+      clearInvocations(escrow);
+      bukkit.clearInvocations();
+      assertEquals(List.of("Alice", "Bob", "Herbie"), commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", ""}));
+      assertEquals(List.of("Alice"), commands.onTabComplete(sender, null, "recycler", new String[]{"ESCROW", "RETURN", "aL"}));
+      assertEquals(List.of("Bob"), commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", "b"}));
+      assertTrue(commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", "Finished"}).isEmpty());
+      assertTrue(commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", "missing"}).isEmpty());
+      verify(escrow, never()).listPendingPlayerIds();
+      bukkit.verify(() -> Bukkit.getOfflinePlayer(any(UUID.class)), never());
+      commands.onCommand(sender, null, "recycler", new String[]{"escrow", "return", "Alice"});
+      verify(sender).sendMessage(contains("Player offline. Pending return file exists for §fAlice"));
+      when(sender.hasPermission("recycler.admin")).thenReturn(false);
+      assertTrue(commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", ""}).isEmpty());
+      when(sender.hasPermission("recycler.admin")).thenReturn(true);
+      escrow.store().update(aliceRow, row -> row.addProperty("state", "delivered"));
+      var later = server.addPlayer("LaterOwner");
+      queued(escrow, token(later).owner(), "pending");
+      later.disconnect();
+      server.getScheduler().performTicks(100);
+      assertTrue(commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", "Alice"}).isEmpty());
+      assertEquals(List.of("LaterOwner"), commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", "la"}));
+    }
+  }
+
+  private com.google.gson.JsonObject queued(EscrowManager escrow, net.tfminecraft.recycler.ownership.QueueIdentity.Owner owner, String state) throws IOException {
+    var payload = new com.google.gson.JsonObject();
+    payload.addProperty("state", state);
+    return escrow.store().create(owner, UUID.randomUUID(), payload);
+  }
+
+  @Test
   void realPluginLifecycleCreatesResourcesRegistersManagersAndReloads() throws Exception {
     for (String name : List.of("TLibs", "MMOItems", "MythicLib", "ItemsAdder"))
       MockBukkit.createMockPlugin(name);
