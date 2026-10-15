@@ -188,14 +188,7 @@ public final class EscrowManager {
     public List<UUID> listMemoryEscrowPlayerIds() { return List.of(); }
     public int countMemoryEscrow() { return 0; }
     public List<UUID> listPendingPlayerIds() {
-        List<UUID> accounts = new ArrayList<>();
-        run(() -> {
-            for (Path path : store().allFiles()) {
-                try { JsonObject row = ReturnStore.read(path); if (!ReturnStore.terminal(row)) accounts.add(ReturnStore.owner(row).account()); }
-                catch (IOException | RuntimeException ex) { warning("Held queue: " + path); }
-            }
-        });
-        return accounts.stream().distinct().toList();
+        return store().pendingPlayerIds();
     }
     public int countPendingFiles() { return describeQueues().size(); }
     private interface Work { void run() throws IOException; }

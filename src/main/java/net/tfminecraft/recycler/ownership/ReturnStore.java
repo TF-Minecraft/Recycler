@@ -4,11 +4,13 @@ import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -20,6 +22,8 @@ public final class ReturnStore {
     }
     private static final List<String> STATES = List.of("depositing", "escrow", "pending", "delivering", "held", "delivered", "consumed", "cancelled");
     private final Path root;
+    private final Map<Path, UUID> pendingOwners = new java.util.LinkedHashMap<>();
+    private Consumer<List<UUID>> pendingOwnersChanged = accounts -> {};
     private final java.util.Map<Path, java.util.Map.Entry<String, java.util.Map<UUID, List<QueueIdentity.Owner>>>> validated = new java.util.HashMap<>();
     public ReturnStore(Path root) { this.root = root.toAbsolutePath().normalize(); }
     public Path root() { return root; }
@@ -32,14 +36,35 @@ public final class ReturnStore {
     }
     public static String text(JsonObject row, String key) { return row.get(key).getAsString(); }
 
+    /** Recovery seeds this index; successful queue publications keep it current without discovery. */
+    public List<UUID> pendingPlayerIds() { return pendingOwners.values().stream().distinct().toList(); }
+    public void onPendingOwnersChanged(Consumer<List<UUID>> listener) {
+        pendingOwnersChanged = listener;
+        listener.accept(pendingPlayerIds());
+    }
+    private void index(Path path, JsonObject row) {
+        if (terminal(row)) forget(path);
+        else {
+            UUID account = owner(row).account();
+            if (!account.equals(pendingOwners.put(path, account))) pendingOwnersChanged.accept(pendingPlayerIds());
+        }
+    }
+    private void forget(Path path) {
+        if (pendingOwners.remove(path) != null) pendingOwnersChanged.accept(pendingPlayerIds());
+    }
+    private JsonObject readRow(Path path) throws IOException {
+        try {
+            JsonObject row = read(path); validate(path, row); index(path, row); return row;
+        } catch (Conflict | NoSuchFileException ex) { forget(path); throw ex; }
+    }
+
     public List<JsonObject> rows(QueueIdentity.Owner owner) throws IOException {
         requireDirectory(root.resolve("character-returns"));
         Path folder = root.resolve("character-returns").resolve(owner.character().toString());
         requireDirectory(folder);
         List<JsonObject> rows = new ArrayList<>();
         for (Path path : files(folder)) {
-            JsonObject row = read(path);
-            validate(path, row);
+            JsonObject row = readRow(path);
             if (!owner.equals(owner(row))) throw new Conflict("Return owner differs from its character folder: " + path);
             rows.add(row);
         }
@@ -60,20 +85,23 @@ public final class ReturnStore {
         row.addProperty("format", 1); row.addProperty("id", id.toString()); setOwner(row, owner);
         validate(file(owner, id), row);
         QueueFiles.write(file(owner, id), QueueJson.bytes(row), false);
+        index(file(owner, id), row);
         return row;
     }
     public JsonObject update(JsonObject expected, Consumer<JsonObject> change) throws IOException {
         QueueIdentity.Owner owner = owner(expected); requireWritable(owner);
         Path file = file(owner, id(expected));
-        JsonObject current = read(file); validate(file, current);
+        JsonObject current = readRow(file);
         if (!current.equals(expected)) throw new Conflict("Return changed before its effect: " + id(expected));
         change.accept(current); validate(file, current);
-        write(file, current); return current;
+        write(file, current); index(file, current); return current;
     }
     public void recover() throws IOException {
+        pendingOwners.clear();
+        pendingOwnersChanged.accept(pendingPlayerIds());
         for (Path path : allFiles()) {
             try {
-                JsonObject row = read(path); validate(path, row);
+                JsonObject row = readRow(path);
                 // No in-memory GUI survived a restart. Ambiguous inventory intents stay untouched.
                 if ("escrow".equals(text(row, "state"))) update(row, copy -> copy.addProperty("state", "pending"));
             } catch (Conflict ex) { /* Retain unloadable documents for staff; other queues remain readable. */ }
@@ -361,10 +389,12 @@ public final class ReturnStore {
             if (!guard.getAsBoolean()) throw new IOException("Estate changed before return publication");
             QueueFiles.write(target, Base64.getDecoder().decode(text(plan, "after")), false);
         }
+        index(target, readPayload(plan, "after"));
         plan.addProperty("phase", "published"); write(file, journal);
         if (remove) {
             if (!guard.getAsBoolean()) throw new IOException("Estate changed before source removal");
             QueueFiles.delete(source);
+            forget(source);
         }
         plan.addProperty("phase", "moved"); write(file, journal);
     }
