@@ -38,9 +38,11 @@ public final class CommandManager implements CommandExecutor, TabCompleter, List
     }
 
     private void refreshPendingOwnerNames(List<UUID> owners) {
-        // Resolve profiles when the queue index changes; joins supply current names directly.
+        // Keep joined names while their owners remain pending; resolve only uncached profiles.
         Map<UUID, String> names = new HashMap<>();
         for (UUID owner : owners) {
+            String cached = pendingOwnerNames.get(owner);
+            if (cached != null) { names.put(owner, cached); continue; }
             try {
                 String name = Bukkit.getOfflinePlayer(owner).getName();
                 if (name != null) names.put(owner, name);

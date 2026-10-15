@@ -6,8 +6,10 @@ import static org.mockito.Mockito.*;
 import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -109,5 +111,49 @@ class ReturnStoreIndexTest {
         assertEquals(row, store.rows(from).getFirst());
         store.update(row, copy -> copy.addProperty("state", "consumed"));
         assertTrue(store.pendingPlayerIds().isEmpty());
+    }
+
+    @Test void transientReadFailuresRetainPendingOwnersUntilLaterValidationAndRecovery() throws Exception {
+        var store = new ReturnStore(root);
+        List<List<UUID>> notifications = new ArrayList<>();
+        store.onPendingOwnersChanged(notifications::add);
+        var row = create(store, from, "pending");
+        Path file = store.file(from, ReturnStore.id(row));
+        byte[] before = Files.readAllBytes(file);
+        try (var disk = mockStatic(ReturnStore.class, CALLS_REAL_METHODS)) {
+            disk.when(() -> ReturnStore.read(file)).thenThrow(new IOException("temporarily unavailable"));
+            assertThrows(IOException.class, () -> store.rows(from));
+            assertEquals(List.of(from.account()), store.pendingPlayerIds());
+            assertThrows(IOException.class, () -> store.update(row, copy -> copy.addProperty("state", "delivered")));
+            assertEquals(List.of(from.account()), store.pendingPlayerIds());
+            assertEquals(List.of(List.of(), List.of(from.account())), notifications);
+        }
+        assertArrayEquals(before, Files.readAllBytes(file));
+        assertEquals(List.of(row), store.rows(from));
+        assertEquals(List.of(List.of(), List.of(from.account())), notifications);
+        store.recover();
+        assertEquals(List.of(from.account()), store.pendingPlayerIds());
+        store.update(row, copy -> copy.addProperty("state", "delivered"));
+        assertTrue(store.pendingPlayerIds().isEmpty());
+    }
+
+    @Test void malformedInvalidAndDeletedRowsRemoveTheirIndexedOwner() throws Exception {
+        for (String defect : List.of("malformed", "invalid", "deleted")) {
+            var store = new ReturnStore(root.resolve(defect));
+            var row = create(store, from, "pending");
+            Path file = store.file(from, ReturnStore.id(row));
+            if (defect.equals("malformed")) Files.writeString(file, "broken");
+            else if (defect.equals("invalid")) {
+                var invalid = row.deepCopy(); invalid.addProperty("state", "unknown");
+                Files.write(file, QueueJson.bytes(invalid));
+            } else Files.delete(file);
+            assertEquals(List.of(from.account()), store.pendingPlayerIds());
+            var failure = assertThrows(IOException.class, () -> store.update(row, copy -> fail("Unreadable rows must not be changed")));
+            if (defect.equals("deleted")) assertInstanceOf(NoSuchFileException.class, failure);
+            else assertInstanceOf(ReturnStore.Conflict.class, failure);
+            assertTrue(store.pendingPlayerIds().isEmpty());
+            store.recover();
+            assertTrue(store.pendingPlayerIds().isEmpty());
+        }
     }
 }

@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -54,7 +55,7 @@ public final class ReturnStore {
     private JsonObject readRow(Path path) throws IOException {
         try {
             JsonObject row = read(path); validate(path, row); index(path, row); return row;
-        } catch (IOException ex) { forget(path); throw ex; }
+        } catch (Conflict | NoSuchFileException ex) { forget(path); throw ex; }
     }
 
     public List<JsonObject> rows(QueueIdentity.Owner owner) throws IOException {
