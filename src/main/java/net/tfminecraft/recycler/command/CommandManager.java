@@ -2,8 +2,11 @@ package net.tfminecraft.recycler.command;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.TreeSet;
 
@@ -14,34 +17,47 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 
 import net.tfminecraft.recycler.Messages;
 import net.tfminecraft.recycler.Recycler;
 import net.tfminecraft.recycler.manager.EscrowManager;
 
-public final class CommandManager implements CommandExecutor, TabCompleter {
+public final class CommandManager implements CommandExecutor, TabCompleter, Listener {
 
     private static final List<String> ROOT_SUBCOMMANDS = List.of("reload", "escrow");
     private static final List<String> ESCROW_SUBCOMMANDS = List.of("list", "return");
 
-    private List<String> pendingOwnerNames = List.of();
+    private Map<UUID, String> pendingOwnerNames = new HashMap<>();
+    private Set<UUID> pendingOwners = Set.of();
 
     public void trackPendingOwners() {
         Recycler.plugin.getEscrowManager().store().onPendingOwnersChanged(this::refreshPendingOwnerNames);
     }
 
     private void refreshPendingOwnerNames(List<UUID> owners) {
-        // Resolve profiles only when the authoritative queue index changes, never while typing.
-        TreeSet<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        // Resolve profiles when the queue index changes; joins supply current names directly.
+        Map<UUID, String> names = new HashMap<>();
         for (UUID owner : owners) {
             try {
                 String name = Bukkit.getOfflinePlayer(owner).getName();
-                if (name != null) names.add(name);
+                if (name != null) names.put(owner, name);
             } catch (RuntimeException ex) {
                 Recycler.plugin.getLogger().warning("Recycler pending owner name unavailable: " + owner + " " + ex.getMessage());
             }
         }
-        pendingOwnerNames = List.copyOf(names);
+        pendingOwners = Set.copyOf(owners);
+        pendingOwnerNames = names;
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        if (pendingOwners.contains(player.getUniqueId())) {
+            pendingOwnerNames.put(player.getUniqueId(), player.getName());
+        }
     }
 
     @Override
@@ -126,7 +142,7 @@ public final class CommandManager implements CommandExecutor, TabCompleter {
         }
         if (args.length == 3 && "escrow".equalsIgnoreCase(args[0]) && "return".equalsIgnoreCase(args[1])) {
             TreeSet<String> names = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-            names.addAll(pendingOwnerNames);
+            names.addAll(pendingOwnerNames.values());
             for (Player player : Bukkit.getOnlinePlayers()) {
                 names.add(player.getName());
             }

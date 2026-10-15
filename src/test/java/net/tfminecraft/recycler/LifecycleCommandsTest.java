@@ -156,6 +156,87 @@ class LifecycleCommandsTest extends TestSupport {
   }
 
   @Test
+  void pendingOwnerRenameOnJoinReplacesOldCompletionThroughLogoutWithoutQueueChanges() throws Exception {
+    for (String name : List.of("TLibs", "MMOItems", "MythicLib", "ItemsAdder"))
+      MockBukkit.createMockPlugin(name);
+    var loaded = MockBukkit.load(Recycler.class);
+    var commands = (CommandManager) loaded.getCommand("recycler").getExecutor();
+    var escrow = loaded.getEscrowManager();
+    var player = server.addPlayer("OldName");
+    var owner = token(player).owner();
+    for (int slot = 0; slot < 36; slot++)
+      player.getInventory().setItem(slot, new org.bukkit.inventory.ItemStack(Material.STONE, 64));
+    escrow.putEscrow(player.getUniqueId(), item(Material.DIAMOND));
+    escrow.pending(owner);
+    player.disconnect();
+    var row = escrow.store().rows(owner).getFirst();
+    Path file = escrow.store().file(owner, ReturnStore.id(row));
+    byte[] before = Files.readAllBytes(file);
+    var store = spy(escrow.store());
+    var field = EscrowManager.class.getDeclaredField("store");
+    field.setAccessible(true); field.set(escrow, store);
+    var sender = mock(CommandSender.class);
+    when(sender.hasPermission("recycler.admin")).thenReturn(true);
+    String[] args = {"escrow", "return", ""};
+    assertEquals(List.of("OldName"), commands.onTabComplete(sender, null, "recycler", args));
+    player.setName("NewName");
+    assertTrue(player.reconnect());
+    var whileOnline = commands.onTabComplete(sender, null, "recycler", args);
+    player.disconnect();
+    var afterLogout = commands.onTabComplete(sender, null, "recycler", args);
+    assertEquals("NewName", Bukkit.getOfflinePlayer(player.getUniqueId()).getName());
+    commands.onCommand(sender, null, "recycler", new String[]{"escrow", "return", "NewName"});
+    verify(sender).sendMessage(contains("Player offline. Pending return file exists for §fNewName"));
+    assertArrayEquals(before, Files.readAllBytes(file));
+    verify(store, never()).allFiles();
+    assertAll(
+        () -> assertEquals(List.of("NewName"), whileOnline),
+        () -> assertEquals(List.of("NewName"), afterLogout),
+        () -> assertEquals(List.of("NewName"), commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", "nE"})),
+        () -> assertTrue(commands.onTabComplete(sender, null, "recycler", new String[]{"escrow", "return", "oLd"}).isEmpty()));
+    clearInvocations(store);
+    try (var bukkit = mockStatic(Bukkit.class, CALLS_REAL_METHODS)) {
+      for (int i = 0; i < 10; i++)
+        assertEquals(List.of("NewName"), commands.onTabComplete(sender, null, "recycler", args));
+      server.getScheduler().performTicks(300);
+      bukkit.verify(() -> Bukkit.getOfflinePlayer(any(UUID.class)), never());
+      verify(store, never()).rows(any());
+      verify(store, never()).allFiles();
+    }
+  }
+
+  @Test
+  void joiningAnUnnamedPendingOwnerCachesTheJoinedNameWithoutCachingOtherPlayers() throws Exception {
+    for (String name : List.of("TLibs", "MMOItems", "MythicLib", "ItemsAdder"))
+      MockBukkit.createMockPlugin(name);
+    var loaded = MockBukkit.load(Recycler.class);
+    var escrow = loaded.getEscrowManager();
+    var commands = (CommandManager) loaded.getCommand("recycler").getExecutor();
+    var sender = mock(CommandSender.class);
+    when(sender.hasPermission("recycler.admin")).thenReturn(true);
+    UUID account = UUID.randomUUID();
+    var owner = new net.tfminecraft.recycler.ownership.QueueIdentity.Owner(account, UUID.randomUUID());
+    String[] args = {"escrow", "return", ""};
+    try (var bukkit = mockStatic(Bukkit.class, CALLS_REAL_METHODS)) {
+      var unnamed = mock(OfflinePlayer.class);
+      bukkit.when(() -> Bukkit.getOfflinePlayer(account)).thenReturn(unnamed);
+      queued(escrow, owner, "held");
+      assertTrue(commands.onTabComplete(sender, null, "recycler", args).isEmpty());
+      bukkit.clearInvocations();
+      var joined = new org.mockbukkit.mockbukkit.entity.PlayerMock(server, "JoinedName", account);
+      server.addPlayer(joined);
+      assertEquals(List.of("JoinedName"), commands.onTabComplete(sender, null, "recycler", args));
+      joined.disconnect();
+      assertEquals(List.of("JoinedName"), commands.onTabComplete(sender, null, "recycler", args));
+      var other = server.addPlayer("OtherOnline");
+      assertEquals(List.of("JoinedName", "OtherOnline"), commands.onTabComplete(sender, null, "recycler", args));
+      other.disconnect();
+      assertEquals(List.of("JoinedName"), commands.onTabComplete(sender, null, "recycler", args));
+      bukkit.verify(() -> Bukkit.getOfflinePlayer(any(UUID.class)), never());
+    }
+  }
+
+  @Test
   void offlineCompletionFollowsEstateSourceRemovalAndRecipientTerminalization() throws Exception {
     var escrow = new EscrowManager();
     when(plugin.getEscrowManager()).thenReturn(escrow);
@@ -227,6 +308,8 @@ class LifecycleCommandsTest extends TestSupport {
     assertNotNull(loaded.getRecyclerManager());
     assertNotNull(loaded.getProviderChain());
     assertInstanceOf(CommandManager.class, loaded.getCommand("recycler").getExecutor());
+    assertTrue(Arrays.stream(org.bukkit.event.player.PlayerJoinEvent.getHandlerList().getRegisteredListeners())
+        .anyMatch(listener -> listener.getPlugin() == loaded && listener.getListener() == loaded.getCommand("recycler").getExecutor()));
     assertTrue(loaded.reloadAll());
     server.getScheduler().performTicks(2);
     var store = spy(loaded.getEscrowManager().store());
