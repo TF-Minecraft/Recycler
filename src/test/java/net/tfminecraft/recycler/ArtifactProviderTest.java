@@ -98,7 +98,17 @@ class ArtifactProviderTest extends TestSupport {
       assertTrue(p.resolveBaseOutputs(common).isEmpty());
       art.verifyNoInteractions();
       care.verifyNoInteractions();
+      ArtifactProvider.huskSupport = false;
+      try {
+        assertFalse(p.canHandle(common), "Without husk support it is just a non-artifact");
+        assertFalse(p.refuses(common));
+        assertTrue(p.resolveBaseOutputs(common).isEmpty());
+      } finally {
+        ArtifactProvider.huskSupport = true;
+      }
     }
+    assertTrue(ArtifactProvider.classPresent("net.tfminecraft.magic.artifact.ArtifactWear"));
+    assertFalse(ArtifactProvider.classPresent("net.tfminecraft.magic.artifact.Missing"));
   }
 
   @Test

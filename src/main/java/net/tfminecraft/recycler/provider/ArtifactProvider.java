@@ -25,6 +25,25 @@ import net.tfminecraft.recycler.model.RecycleOutput;
  */
 public final class ArtifactProvider implements RecycleProvider {
 
+    /**
+     * Husks exist from Magic 0.9.0. Against an older Magic the class is missing, and
+     * touching it would break every recycle, since the chain asks this provider first.
+     */
+    public static boolean huskSupport = classPresent("net.tfminecraft.magic.artifact.ArtifactWear");
+
+    public static boolean classPresent(String name) {
+        try {
+            Class.forName(name, false, ArtifactProvider.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException | LinkageError ex) {
+            return false;
+        }
+    }
+
+    private static boolean isHusk(ItemStack item) {
+        return huskSupport && ArtifactWear.isHusk(item);
+    }
+
     @Override
     public int priority() {
         return 16;
@@ -37,7 +56,7 @@ public final class ArtifactProvider implements RecycleProvider {
 
     @Override
     public boolean canHandle(ItemStack item) {
-        if (ArtifactWear.isHusk(item)) {
+        if (isHusk(item)) {
             return true;
         }
         return Artifact.fromItem(item) != null && !belowMinMuffle(item);
@@ -49,7 +68,7 @@ public final class ArtifactProvider implements RecycleProvider {
      * artifact cannot get around either setting.
      */
     public boolean refuses(ItemStack item) {
-        if (ArtifactWear.isHusk(item)) {
+        if (isHusk(item)) {
             return outputsFor(item).isEmpty();
         }
         return Artifact.fromItem(item) != null && (belowMinMuffle(item) || outputsFor(item).isEmpty());
@@ -61,7 +80,7 @@ public final class ArtifactProvider implements RecycleProvider {
 
     @Override
     public List<RecycleOutput> resolveBaseOutputs(ItemStack item) {
-        if (!ArtifactWear.isHusk(item) && Artifact.fromItem(item) == null) {
+        if (!isHusk(item) && Artifact.fromItem(item) == null) {
             return List.of();
         }
         return outputsFor(item);
@@ -69,7 +88,7 @@ public final class ArtifactProvider implements RecycleProvider {
 
     private static List<RecycleOutput> outputsFor(ItemStack item) {
         int amount = Cache.artifactRarityReturns.getOrDefault(rarity(item), Cache.artifactDefaultReturn);
-        if (ArtifactWear.isHusk(item)) {
+        if (isHusk(item)) {
             amount = (int) Math.floor(amount * Cache.artifactHuskFraction);
         }
         if (amount <= 0 || Cache.artifactReturnItem.isBlank()) {
