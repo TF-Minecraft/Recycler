@@ -60,11 +60,15 @@ artifact_returns:
   # Lowest muffle (0.0-1.0) an artifact needs before it can be recycled. 0.0 accepts any
   # artifact; 1.0 accepts only fully muffled ones (about a day in a chest).
   min_muffle: 0.0
+  # Spent husks (artifacts worn out in meditation) return this share of their rarity's
+  # amount, rounded down. min_muffle does not apply to them. 0.0-1.0.
+  husk_fraction: 0.5
   item: m.currency.enchanted_dust
   rarities:
     common: 4
     uncommon: 8
     rare: 12
+    # Magic no longer rolls Epic; this keeps older Epic artifacts recycling at their value.
     epic: 16
     legendary: 28
   default: 4

@@ -36,6 +36,7 @@ class ArtifactProviderTest extends TestSupport {
     var unrecorded = artifact(null);
     try (var art = mockStatic(Artifact.class);
         var keys = mockStatic(ArtifactKeys.class);
+        var wear = mockStatic(ArtifactWear.class);
         var care = mockStatic(ArtifactCareStore.class)) {
       keys.when(ArtifactKeys::artifactRarity).thenReturn(RARITY);
       var found = mock(Artifact.class);
@@ -70,6 +71,37 @@ class ArtifactProviderTest extends TestSupport {
   }
 
   @Test
+  void spentHusksReturnTheirShareOfTheRarityAmountWhateverTheirMuffle() {
+    var p = new ArtifactProvider();
+    var legendary = artifact("legendary");
+    var common = artifact("common");
+    try (var art = mockStatic(Artifact.class);
+        var keys = mockStatic(ArtifactKeys.class);
+        var wear = mockStatic(ArtifactWear.class);
+        var care = mockStatic(ArtifactCareStore.class)) {
+      keys.when(ArtifactKeys::artifactRarity).thenReturn(RARITY);
+      wear.when(() -> ArtifactWear.isHusk(legendary)).thenReturn(true);
+      wear.when(() -> ArtifactWear.isHusk(common)).thenReturn(true);
+      Cache.artifactMinMuffle = 1.0;
+      assertTrue(p.canHandle(legendary), "A husk has no aura, so min_muffle does not apply");
+      assertFalse(p.refuses(legendary));
+      assertEquals(
+          List.of(new RecycleOutput("m.currency.enchanted_dust", 14)),
+          p.resolveBaseOutputs(legendary));
+      Cache.artifactHuskFraction = .3;
+      assertEquals(
+          List.of(new RecycleOutput("m.currency.enchanted_dust", 1)),
+          p.resolveBaseOutputs(common),
+          "Rounded down");
+      Cache.artifactHuskFraction = 0;
+      assertTrue(p.refuses(common), "A husk worth nothing is refused, not sent to recipes");
+      assertTrue(p.resolveBaseOutputs(common).isEmpty());
+      art.verifyNoInteractions();
+      care.verifyNoInteractions();
+    }
+  }
+
+  @Test
   void chainRefusesArtifactsBelowMinMuffleEvenWhenARecipeMatches() throws Exception {
     yaml("recipes.yml", "recipes:\n  rod:\n    input: v.blaze_rod\n    outputs: ['v.stick 1']");
     new net.tfminecraft.recycler.loader.RecipeLoader().loadFolder(dir.toFile());
@@ -81,6 +113,7 @@ class ArtifactProviderTest extends TestSupport {
     try (var art = mockStatic(Artifact.class);
         var keys = mockStatic(ArtifactKeys.class);
         var care = mockStatic(ArtifactCareStore.class);
+        var wear = mockStatic(ArtifactWear.class);
         var gear = mockStatic(net.tfminecraft.magic.gear.GearProvenance.class)) {
       keys.when(ArtifactKeys::artifactRarity).thenReturn(RARITY);
       art.when(() -> Artifact.fromItem(stack)).thenReturn(mock(Artifact.class));

@@ -29,6 +29,8 @@ public final class Cache {
             "common", 4, "uncommon", 8, "rare", 12, "epic", 16, "legendary", 28);
     public static int artifactDefaultReturn = 4;
     public static double artifactMinMuffle = 0.0;
+    /** Share of the rarity amount a spent artifact husk returns, rounded down. */
+    public static double artifactHuskFraction = 0.5;
     public static boolean blockConfirmWhenZeroYield = true;
 
     public static boolean depositWhitelistMode = false;

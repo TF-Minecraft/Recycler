@@ -89,17 +89,19 @@ class LoadersTest extends TestSupport {
         Cache.artifactRarityReturns);
     assertEquals(4, Cache.artifactDefaultReturn);
     assertEquals(0, Cache.artifactMinMuffle, "Any artifact is accepted by default");
+    assertEquals(.5, Cache.artifactHuskFraction, "Husks return half by default");
     loader.loadSafe(
         yaml(
                 "artifacts.yml",
                 "return_rates:\n  artifacts: 0.5\nartifact_returns:\n  item: ' m.currency.other '\n"
-                    + "  min_muffle: 2\n  default: -2\n  rarities:\n    Common: 0\n    mythic: 9\n    rare: -1\n"
+                    + "  min_muffle: 2\n  husk_fraction: 3\n  default: -2\n  rarities:\n    Common: 0\n    mythic: 9\n    rare: -1\n"
                     + "    legendary: seven\n    odd: x\n")
             .toFile());
     assertEquals(.5, Cache.artifactReturnRate);
     assertEquals("m.currency.other", Cache.artifactReturnItem);
     assertEquals(0, Cache.artifactDefaultReturn, "Negative amounts become 0");
     assertEquals(1, Cache.artifactMinMuffle, "min_muffle is clamped to 0.0-1.0");
+    assertEquals(1, Cache.artifactHuskFraction, "husk_fraction is clamped to 0.0-1.0");
     assertEquals(
         Map.of(
             "common", 0, "uncommon", 8, "rare", 0, "epic", 16, "legendary", 28, "mythic", 9, "odd",
@@ -107,15 +109,18 @@ class LoadersTest extends TestSupport {
         Cache.artifactRarityReturns,
         "A non-number keeps the built-in amount, or default for a new rarity");
     loader.loadSafe(
-        yaml("no-rarities.yml", "artifact_returns:\n  default: 3\n  min_muffle: 0.5\n").toFile());
+        yaml("no-rarities.yml", "artifact_returns:\n  default: 3\n  min_muffle: 0.5\n  husk_fraction: 0.25\n")
+            .toFile());
     assertEquals(3, Cache.artifactDefaultReturn);
     assertEquals(.5, Cache.artifactMinMuffle);
+    assertEquals(.25, Cache.artifactHuskFraction);
     assertEquals(28, Cache.artifactRarityReturns.get("legendary"));
     loader.loadSafe(yaml("none.yml", "{}").toFile());
     assertEquals("m.currency.enchanted_dust", Cache.artifactReturnItem);
     assertEquals(4, Cache.artifactDefaultReturn);
     assertEquals(4, Cache.artifactRarityReturns.get("common"));
     assertEquals(0, Cache.artifactMinMuffle);
+    assertEquals(.5, Cache.artifactHuskFraction);
   }
 
   @Test
