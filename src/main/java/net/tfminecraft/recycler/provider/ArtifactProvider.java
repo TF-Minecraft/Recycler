@@ -10,6 +10,7 @@ import org.bukkit.persistence.PersistentDataType;
 import net.tfminecraft.magic.artifact.Artifact;
 import net.tfminecraft.magic.artifact.ArtifactCareStore;
 import net.tfminecraft.magic.artifact.ArtifactKeys;
+import net.tfminecraft.magic.artifact.ArtifactWear;
 import net.tfminecraft.recycler.Cache;
 import net.tfminecraft.recycler.model.RecycleOutput;
 
@@ -17,8 +18,31 @@ import net.tfminecraft.recycler.model.RecycleOutput;
  * Magic artifacts muffled at least {@code artifact_returns.min_muffle} (0 = any artifact).
  * They are found rather than crafted, so there is no record of what went into them: the
  * return is a fixed amount by rarity from {@code artifact_returns}. Stored aura is not returned.
+ *
+ * <p>Spent husks (artifacts worn out in meditation) hold no aura, so min_muffle does not
+ * apply to them. They return {@code artifact_returns.husk_fraction} of their rarity's amount,
+ * rounded down.
  */
 public final class ArtifactProvider implements RecycleProvider {
+
+    /**
+     * Husks exist from Magic 0.9.0. Against an older Magic the class is missing, and
+     * touching it would break every recycle, since the chain asks this provider first.
+     */
+    public static boolean huskSupport = classPresent("net.tfminecraft.magic.artifact.ArtifactWear");
+
+    public static boolean classPresent(String name) {
+        try {
+            Class.forName(name, false, ArtifactProvider.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException | LinkageError ex) {
+            return false;
+        }
+    }
+
+    private static boolean isHusk(ItemStack item) {
+        return huskSupport && ArtifactWear.isHusk(item);
+    }
 
     @Override
     public int priority() {
@@ -32,6 +56,9 @@ public final class ArtifactProvider implements RecycleProvider {
 
     @Override
     public boolean canHandle(ItemStack item) {
+        if (isHusk(item)) {
+            return true;
+        }
         return Artifact.fromItem(item) != null && !belowMinMuffle(item);
     }
 
@@ -41,6 +68,9 @@ public final class ArtifactProvider implements RecycleProvider {
      * artifact cannot get around either setting.
      */
     public boolean refuses(ItemStack item) {
+        if (isHusk(item)) {
+            return outputsFor(item).isEmpty();
+        }
         return Artifact.fromItem(item) != null && (belowMinMuffle(item) || outputsFor(item).isEmpty());
     }
 
@@ -50,7 +80,7 @@ public final class ArtifactProvider implements RecycleProvider {
 
     @Override
     public List<RecycleOutput> resolveBaseOutputs(ItemStack item) {
-        if (Artifact.fromItem(item) == null) {
+        if (!isHusk(item) && Artifact.fromItem(item) == null) {
             return List.of();
         }
         return outputsFor(item);
@@ -58,6 +88,9 @@ public final class ArtifactProvider implements RecycleProvider {
 
     private static List<RecycleOutput> outputsFor(ItemStack item) {
         int amount = Cache.artifactRarityReturns.getOrDefault(rarity(item), Cache.artifactDefaultReturn);
+        if (isHusk(item)) {
+            amount = (int) Math.floor(amount * Cache.artifactHuskFraction);
+        }
         if (amount <= 0 || Cache.artifactReturnItem.isBlank()) {
             return List.of();
         }

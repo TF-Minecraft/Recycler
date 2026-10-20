@@ -19,6 +19,7 @@ public final class ConfigLoader implements LoaderInterface {
     private static final double DEFAULT_SCRAP_RATE = 0.5;
     private static final double DEFAULT_RECIPE_RATE = 1.0;
     private static final String DEFAULT_ARTIFACT_ITEM = "m.currency.enchanted_dust";
+    private static final double DEFAULT_HUSK_FRACTION = 0.5;
     private static final java.util.Map<String, Integer> DEFAULT_ARTIFACT_RETURNS = java.util.Map.of(
             "common", 4, "uncommon", 8, "rare", 12, "epic", 16, "legendary", 28);
 
@@ -151,8 +152,11 @@ public final class ConfigLoader implements LoaderInterface {
         Cache.artifactReturnItem = DEFAULT_ARTIFACT_ITEM;
         Cache.artifactDefaultReturn = 4;
         Cache.artifactMinMuffle = 0.0;
+        Cache.artifactHuskFraction = DEFAULT_HUSK_FRACTION;
         if (section != null) {
             Cache.artifactMinMuffle = readRate(section, "min_muffle", 0.0, 0.0);
+            Cache.artifactHuskFraction = readRate(
+                    section, "husk_fraction", DEFAULT_HUSK_FRACTION, DEFAULT_HUSK_FRACTION);
             Cache.artifactReturnItem = section.getString("item", DEFAULT_ARTIFACT_ITEM).trim();
             Cache.artifactDefaultReturn = readAmount(section, "default", 4);
             ConfigurationSection rarities = section.getConfigurationSection("rarities");

@@ -16,7 +16,8 @@
         <advancedcrafting.version>2.2.5</advancedcrafting.version>
         <geminfusion.version>2.2.5</geminfusion.version>
         <gunsandgadgets.version>2.0.6</gunsandgadgets.version>
-        <magic.version>0.4.7</magic.version>
+        <!-- Spent artifact husks need ArtifactWear from 0.9.0. -->
+        <magic.version>0.9.0</magic.version>
         <tlibs.version>2.6.0</tlibs.version>
     </properties>
 
