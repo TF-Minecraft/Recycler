@@ -16,8 +16,9 @@ import net.tfminecraft.recycler.model.RecycleOutput;
 
 /**
  * Magic artifacts muffled at least {@code artifact_returns.min_muffle} (0 = any artifact).
- * They are found rather than crafted, so there is no record of what went into them: the
- * return is a fixed amount by rarity from {@code artifact_returns}. Stored aura is not returned.
+ * Node artifacts and artifacts opened from crafted sealed items use the same fixed
+ * return by rarity from {@code artifact_returns}, rather than crafting inputs.
+ * Stored aura is not returned.
  *
  * <p>Spent husks (artifacts worn out in meditation) hold no aura, so min_muffle does not
  * apply to them. They return {@code artifact_returns.husk_fraction} of their rarity's amount,
