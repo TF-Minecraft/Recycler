@@ -1,12 +1,22 @@
 package net.tfminecraft.recycler.manager;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import net.tfminecraft.recycler.GuiCache;
+import net.tfminecraft.recycler.Messages;
 import net.tfminecraft.recycler.Recycler;
 import net.tfminecraft.recycler.gui.RecyclerGuiHolder;
+import net.tfminecraft.recycler.model.RecycleOutput;
 import net.tfminecraft.recycler.model.RecycleSession;
 import net.tfminecraft.recycler.provider.RecycleProviderChain;
 import net.tfminecraft.recycler.provider.RecycleResult;
@@ -102,15 +112,57 @@ public final class InventoryManager {
             }
             stack.setAmount(Math.min(64, output.baseAmount()));
             if (output.returnChance() >= 0) {
-                var meta = stack.getItemMeta();
-                var lore = meta.hasLore() ? new java.util.ArrayList<>(meta.getLore()) : new java.util.ArrayList<String>();
-                lore.add(String.format(java.util.Locale.ROOT, "Recovery chance: %.1f%% per material", output.returnChance() * 100));
-                meta.setLore(lore);
-                stack.setItemMeta(meta);
+                addChanceLore(stack, output);
             }
             inv.setItem(GridLayout.previewSlots().get(index), stack);
             index++;
         }
+    }
+
+    /** Appends preview.scrap_chance from messages.yml under the item's own lore. */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    private void addChanceLore(ItemStack stack, RecycleOutput output) {
+        List<String> template = Messages.getList("preview.scrap_chance");
+        if (template.isEmpty()) {
+            return;
+        }
+        String name = itemName(stack);
+        String chance = formatChance(output.returnChance());
+        String amount = Integer.toString(output.baseAmount());
+        var meta = stack.getItemMeta();
+        List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+        for (String line : template) {
+            lore.add(line.replace("%item%", name).replace("%chance%", chance).replace("%amount%", amount));
+        }
+        meta.setLore(lore);
+        stack.setItemMeta(meta);
+    }
+
+    /** The item's own name with its colour; plain vanilla items get their material name in white. */
+    // Keep the existing legacy text representation, formatting, and exact-string comparisons.
+    @SuppressWarnings("deprecation")
+    private static String itemName(ItemStack stack) {
+        ItemMeta meta = stack.getItemMeta();
+        if (meta.hasDisplayName()) {
+            return meta.getDisplayName();
+        }
+        if (meta.hasItemName()) {
+            return meta.getItemName();
+        }
+        StringBuilder name = new StringBuilder();
+        for (String word : stack.getType().name().toLowerCase(Locale.ROOT).split("_")) {
+            if (!name.isEmpty()) {
+                name.append(' ');
+            }
+            name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return ChatColor.WHITE + name.toString();
+    }
+
+    /** 0.5 -> "50%", 0.255 -> "25.5%". */
+    private static String formatChance(double chance) {
+        return new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.ROOT)).format(chance * 100) + "%";
     }
 
 }

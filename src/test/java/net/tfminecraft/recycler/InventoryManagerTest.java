@@ -25,6 +25,9 @@ class InventoryManagerTest extends TestSupport {
     when(chain.resolve(input)).thenReturn(RecycleResult.of("scrap",
         List.of(new RecycleOutput("gem", 1, .01)), new RecycleContext(.5, 1, 1)));
     manager.openMain(player, session);
+    when(plugin.getResource("messages.yml"))
+        .thenAnswer(x -> getClass().getResourceAsStream("/messages.yml"));
+    Messages.load(dir.resolve("absent.yml").toFile());
     for (boolean hasLore : List.of(false, true)) {
       when(api.getCreator().getItemFromPath("gem")).thenAnswer(x -> {
         var gem = item(Material.DIAMOND);
@@ -36,9 +39,58 @@ class InventoryManagerTest extends TestSupport {
       manager.refreshPreview(player, session, escrow);
       var shown = player.getOpenInventory().getTopInventory().getItem(GridLayout.previewSlots().getFirst());
       assertEquals(1, shown.getAmount());
-      assertEquals("Recovery chance: 1.0% per material", shown.getItemMeta().getLore().getLast());
-      assertEquals(hasLore ? 2 : 1, shown.getItemMeta().getLore().size());
+      var lore = shown.getItemMeta().getLore();
+      assertEquals(hasLore ? 4 : 3, lore.size());
+      assertEquals("", lore.get(lore.size() - 3));
+      assertEquals("§7Each §fDiamond §7has a §x§f§0§c§7§5§e1% §7chance", lore.get(lore.size() - 2));
+      assertEquals("§7to be recovered §8(up to 1)", lore.getLast());
     }
+  }
+
+  @Test
+  void chanceLoreUsesTheConfiguredLinesAndTheItemsOwnName() throws Exception {
+    var chain = mock(RecycleProviderChain.class);
+    var manager = new InventoryManager(chain);
+    var player = server.addPlayer();
+    var session = new RecycleSession(player.getUniqueId(), token(player));
+    var escrow = mock(EscrowManager.class);
+    var input = item(Material.IRON_NUGGET);
+    when(escrow.getEscrow(session.getToken().owner())).thenReturn(input);
+    when(chain.resolve(input)).thenReturn(RecycleResult.of("scrap",
+        List.of(new RecycleOutput("steel", 70, .255)), new RecycleContext(.5, 1, 1)));
+    when(api.getCreator().getItemFromPath("steel")).thenAnswer(x -> {
+      var steel = item(Material.IRON_INGOT);
+      var meta = steel.getItemMeta();
+      meta.setDisplayName("§x§7§f§7§d§8§0Steel Ingot");
+      steel.setItemMeta(meta);
+      return steel;
+    });
+    manager.openMain(player, session);
+    var slot = GridLayout.previewSlots().getFirst();
+
+    Messages.load(yaml("one-line.yml", "preview:\n  scrap_chance: \"%item% &#00FF00%chance% %amount%\"").toFile());
+    manager.refreshPreview(player, session, escrow);
+    var shown = player.getOpenInventory().getTopInventory().getItem(slot);
+    assertEquals(64, shown.getAmount());
+    assertEquals(List.of("§x§7§f§7§d§8§0Steel Ingot §x§0§0§f§f§0§025.5% 70"), shown.getItemMeta().getLore());
+
+    Messages.load(yaml("none.yml", "preview:\n  scrap_chance: []").toFile());
+    manager.refreshPreview(player, session, escrow);
+    assertFalse(player.getOpenInventory().getTopInventory().getItem(slot).getItemMeta().hasLore());
+  }
+
+  @Test
+  void itemNamesAndChanceFormatting() throws Exception {
+    var named = item(Material.DIAMOND);
+    var meta = named.getItemMeta();
+    meta.setItemName("§bRuby");
+    named.setItemMeta(meta);
+    assertEquals("§bRuby", invoke(InventoryManager.class, "itemName", new Class<?>[] {org.bukkit.inventory.ItemStack.class}, named));
+    assertEquals("§fIron Ingot", invoke(InventoryManager.class, "itemName", new Class<?>[] {org.bukkit.inventory.ItemStack.class}, item(Material.IRON_INGOT)));
+    assertEquals("50%", invoke(InventoryManager.class, "formatChance", new Class<?>[] {double.class}, .5));
+    assertEquals("1%", invoke(InventoryManager.class, "formatChance", new Class<?>[] {double.class}, .01));
+    assertEquals("7%", invoke(InventoryManager.class, "formatChance", new Class<?>[] {double.class}, .07));
+    assertEquals("25.5%", invoke(InventoryManager.class, "formatChance", new Class<?>[] {double.class}, .255));
   }
   @Test
   void shellPreviewReplacementAndCapacityLimit() throws Exception {
