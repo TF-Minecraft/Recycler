@@ -5,6 +5,9 @@ import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -28,6 +31,8 @@ import net.tfminecraft.recycler.util.StationEffects;
  * Builds and updates the station GUI.
  */
 public final class InventoryManager {
+
+    private static final Pattern PLACEHOLDER = Pattern.compile("%(item|chance|amount)%");
 
     private final RecycleProviderChain providerChain;
 
@@ -127,13 +132,21 @@ public final class InventoryManager {
         if (template.isEmpty()) {
             return;
         }
-        String name = itemName(stack);
-        String chance = formatChance(output.returnChance());
-        String amount = Integer.toString(output.baseAmount());
+        Map<String, String> values = Map.of(
+                "item", itemName(stack),
+                "chance", formatChance(output.returnChance()),
+                "amount", Integer.toString(output.baseAmount()));
         var meta = stack.getItemMeta();
         List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
         for (String line : template) {
-            lore.add(line.replace("%item%", name).replace("%chance%", chance).replace("%amount%", amount));
+            // One pass over the template, so a name containing %amount% is left as written.
+            Matcher match = PLACEHOLDER.matcher(line);
+            StringBuilder filled = new StringBuilder();
+            while (match.find()) {
+                match.appendReplacement(filled, Matcher.quoteReplacement(values.get(match.group(1))));
+            }
+            match.appendTail(filled);
+            lore.add(filled.toString());
         }
         meta.setLore(lore);
         stack.setItemMeta(meta);

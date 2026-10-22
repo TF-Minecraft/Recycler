@@ -61,7 +61,7 @@ class InventoryManagerTest extends TestSupport {
     when(api.getCreator().getItemFromPath("steel")).thenAnswer(x -> {
       var steel = item(Material.IRON_INGOT);
       var meta = steel.getItemMeta();
-      meta.setDisplayName("§x§7§f§7§d§8§0Steel Ingot");
+      meta.setDisplayName("§x§7§f§7§d§8§0Steel %amount% $1 Ingot");
       steel.setItemMeta(meta);
       return steel;
     });
@@ -72,7 +72,8 @@ class InventoryManagerTest extends TestSupport {
     manager.refreshPreview(player, session, escrow);
     var shown = player.getOpenInventory().getTopInventory().getItem(slot);
     assertEquals(64, shown.getAmount());
-    assertEquals(List.of("§x§7§f§7§d§8§0Steel Ingot §x§0§0§f§f§0§025.5% 70"), shown.getItemMeta().getLore());
+    // The name's own %amount% and $1 stay literal; only the template's placeholders are filled.
+    assertEquals(List.of("§x§7§f§7§d§8§0Steel %amount% $1 Ingot §x§0§0§f§f§0§025.5% 70"), shown.getItemMeta().getLore());
 
     Messages.load(yaml("none.yml", "preview:\n  scrap_chance: []").toFile());
     manager.refreshPreview(player, session, escrow);
