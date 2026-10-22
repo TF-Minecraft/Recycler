@@ -1,12 +1,30 @@
+# All text the plugin shows players.
+# Supports & color codes and hex colors (&#RRGGBB or #RRGGBB).
+# Keys missing from this file use the plugin's built-in text.
+
 reload:
-  success: "§a[Recycler] Reloaded configs."
-  failed: "§c[Recycler] Reload failed - check console."
+  success: "&a[Recycler] Reloaded configs."
+  failed: "&c[Recycler] Reload failed - check console."
 
 station:
-  not_recyclable: "§cThat item cannot be recycled here."
-  blocked: "§cThat item cannot be deposited here."
-  zero_yield: "§cNothing would be returned from recycling this item."
-  recycled: "§aRecycling complete."
+  not_recyclable: "&cThat item cannot be recycled here."
+  blocked: "&cThat item cannot be deposited here."
+  zero_yield: "&cNothing would be returned from recycling this item."
+  recycled: "&aRecycling complete."
 
 escrow:
-  returned: "§7Your item was returned from the recycling station."
+  returned: "&7Your item was returned from the recycling station."
+
+preview:
+  # Lore added under the item's own lore on each possible alloy scrap return.
+  # The stack shown is the most that can come back; on confirm each unit rolls
+  # on its own, and a failed roll still uses up the scrap.
+  # %item%   = the material's own name, in its own color
+  #            (put a color after it, or its color runs on)
+  # %chance% = chance for each unit to come back, e.g. 50%
+  # %amount% = most units that can come back (the stack shown stops at 64)
+  # Use [] to add no lore.
+  scrap_chance:
+    - ""
+    - "&7Each %item% &7has a &#f0c75e%chance% &7chance"
+    - "&7to be recovered &8(up to %amount%)"

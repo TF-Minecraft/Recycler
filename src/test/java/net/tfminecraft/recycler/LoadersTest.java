@@ -147,6 +147,25 @@ class LoadersTest extends TestSupport {
   }
 
   @Test
+  void messagesColorsListsAndBundledDefaults() throws Exception {
+    var field = Messages.class.getDeclaredField("config");
+    field.setAccessible(true);
+    field.set(null, null);
+    assertEquals(List.of(), Messages.getList("lines"));
+    when(plugin.getResource("messages.yml"))
+        .thenAnswer(x -> new ByteArrayInputStream("greet: '&aBundled'\nlines: [a, b]\n".getBytes()));
+    Messages.load(yaml("server.yml", "own: '&#FF0000Red #00ff00green &lbold'\nlines: '&7one'\n").toFile());
+    assertEquals("§x§F§F§0§0§0§0Red §x§0§0§f§f§0§0green §lbold", Messages.get("own"));
+    assertEquals("§aBundled", Messages.get("greet"));
+    assertEquals(List.of("§7one"), Messages.getList("lines"));
+    assertEquals(List.of(), Messages.getList("missing"));
+    Messages.load(yaml("empty.yml", "{}").toFile());
+    assertEquals(List.of("a", "b"), Messages.getList("lines"));
+    Messages.load(dir.resolve("absent.yml").toFile());
+    assertEquals("§aBundled", Messages.get("greet"));
+  }
+
+  @Test
   void recipesParseCurrentLegacyAliasesAndRejectMalformedEntries() throws Exception {
     var loader = new RecipeLoader();
     assertTrue(loader.loadFolder(dir.resolve("absent").toFile()));
