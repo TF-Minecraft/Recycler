@@ -61,6 +61,10 @@ class QueueEstateTest {
     }
     var server=mock(org.bukkit.Server.class);var services=mock(org.bukkit.plugin.ServicesManager.class);var scheduler=mock(org.bukkit.scheduler.BukkitScheduler.class);
     when(plugin.getServer()).thenReturn(server);when(server.getServicesManager()).thenReturn(services);when(server.getScheduler()).thenReturn(scheduler);
-    QueueEstate.start(plugin);verify(services).register(eq(EstateParticipant.class),any(CharacterQueueEstate.class),eq(plugin),eq(org.bukkit.plugin.ServicePriority.Normal));verify(scheduler).runTaskTimer(eq(plugin),any(Runnable.class),eq(1L),eq(72_000L));
+    QueueEstate.start(plugin);verify(services).register(eq(EstateParticipant.class),any(CharacterQueueEstate.class),eq(plugin),eq(org.bukkit.plugin.ServicePriority.Normal));
+    // Boot pass on the first tick; hourly passes 45 minutes off the enable + 1 h tick other plugins use.
+    var boot=org.mockito.ArgumentCaptor.forClass(Runnable.class);var hourly=org.mockito.ArgumentCaptor.forClass(Runnable.class);
+    verify(scheduler).runTaskLater(eq(plugin),boot.capture(),eq(1L));verify(scheduler).runTaskTimer(eq(plugin),hourly.capture(),eq(1L+72_000L+54_000L),eq(72_000L));verifyNoMoreInteractions(scheduler);
+    try(var estates=mockStatic(Estates.class)){boot.getValue().run();hourly.getValue().run();estates.verify(Estates::decided,times(2));}
   }
 }

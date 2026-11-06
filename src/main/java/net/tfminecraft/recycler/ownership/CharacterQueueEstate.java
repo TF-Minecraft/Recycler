@@ -17,11 +17,17 @@ import org.bukkit.plugin.ServicePriority;
 public final class CharacterQueueEstate implements EstateParticipant {
     private final Recycler plugin;
     private final Map<UUID, Map.Entry<Long, Outcome>> reported = new java.util.HashMap<>();
+    static final long HOUR_TICKS = 72_000L;
+    /** 45 minutes: keeps the hourly pass off the tick other plugins' hourly jobs share (enable + 1 h). */
+    static final long HOURLY_OFFSET_TICKS = 54_000L;
     public CharacterQueueEstate(Recycler plugin) { this.plugin = plugin; }
     public static void start(Recycler plugin) {
         CharacterQueueEstate participant = new CharacterQueueEstate(plugin);
         plugin.getServer().getServicesManager().register(EstateParticipant.class, participant, plugin, ServicePriority.Normal);
-        plugin.getServer().getScheduler().runTaskTimer(plugin, participant::reconcile, 1L, 72_000L);
+        var scheduler = plugin.getServer().getScheduler();
+        // Boot pass on the first tick as before; the hourly passes then run 45 minutes later than they did.
+        scheduler.runTaskLater(plugin, participant::reconcile, 1L);
+        scheduler.runTaskTimer(plugin, participant::reconcile, 1L + HOUR_TICKS + HOURLY_OFFSET_TICKS, HOUR_TICKS);
     }
     public String id() { return "recycler"; }
     public Outcome settle(EstateDecision decision) {
