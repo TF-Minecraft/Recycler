@@ -429,7 +429,16 @@ public final class ReturnStore {
         catch (IOException ex) { throw new Conflict("Return document needs recovery: " + path + " (" + ex.getMessage() + ")"); }
     }
     static JsonObject readPayload(JsonObject plan, String part) throws IOException { return QueueJson.parse(new String(Base64.getDecoder().decode(text(plan, part)), StandardCharsets.UTF_8)); }
-    static void write(Path path, JsonObject raw) throws IOException { QueueFiles.write(path, QueueJson.bytes(raw), true); }
+    /**
+     * Skips a byte-identical replacement only after this process fully published that path itself, so the hourly estate
+     * pass does not re-sync unchanged journals. Identical bytes alone do not prove an earlier rename was acknowledged.
+     */
+    static void write(Path path, JsonObject raw) throws IOException {
+        byte[] bytes = QueueJson.bytes(raw);
+        if (QueueFiles.published(path) && Files.isRegularFile(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+                && java.util.Arrays.equals(Files.readAllBytes(path), bytes)) return;
+        QueueFiles.write(path, bytes, true);
+    }
     static List<Path> files(Path folder) throws IOException {
         if (!Files.isDirectory(folder)) return List.of();
         try (var paths = Files.list(folder)) { return paths.filter(path -> !staging(path)).sorted().toList(); }

@@ -70,6 +70,15 @@ class ReturnStoreTest {
     assertArrayEquals(original,Files.readAllBytes(store.file(from,ReturnStore.id(one))));assertArrayEquals(saved,Files.readAllBytes(estate(death)));
     Files.delete(store.file(from,ReturnStore.id(one)));store.create(from,ReturnStore.id(one),payload("consumed"));assertThrows(ReturnStore.Conflict.class,()->transfer(store,death,"two",from,to,()->true));
   }
+  @Test void repeatedSettlementOfAnUnchangedEstateKeepsItsReceiptsWithoutRewritingAnyFile()throws Exception{
+    try(var disk=mockStatic(QueueFiles.class,CALLS_REAL_METHODS)){
+      disk.when(()->QueueFiles.force(any())).thenAnswer(call->null);
+      var store=store();holding(store,"pending");UUID death=UUID.randomUUID();var receipts=transfer(store,death,"one",from,to,()->true);byte[] journal=Files.readAllBytes(estate(death));
+      disk.clearInvocations();
+      assertEquals(receipts,transfer(store,death,"one",from,to,()->true));assertEquals(receipts,store.retained(death,"frozen",from));
+      disk.verify(()->QueueFiles.write(any(),any(),anyBoolean()),never());assertArrayEquals(journal,Files.readAllBytes(estate(death)));assertEquals(1,store.rows(to).size());
+    }
+  }
   @Test void ambiguousEffectsAndMalformedOwnersBlockEstateWithoutAnyDelivery()throws Exception{
     var store=store();var row=holding(store,"depositing");UUID death=UUID.randomUUID();assertThrows(ReturnStore.Conflict.class,()->transfer(store,death,"one",from,to,()->true));
     store.update(row,r->r.addProperty("state","delivering"));assertThrows(ReturnStore.Conflict.class,()->transfer(store,death,"one",from,to,()->true));
