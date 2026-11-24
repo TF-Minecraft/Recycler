@@ -23,17 +23,24 @@ class QueueFilesTest {
       disk.when(()->Files.move(any(Path.class),any(Path.class),eq(StandardCopyOption.ATOMIC_MOVE),eq(StandardCopyOption.REPLACE_EXISTING))).thenThrow(new AtomicMoveNotSupportedException("a","b","unsupported"));assertThrows(IOException.class,()->QueueFiles.write(file,"new".getBytes(),true));
     }assertArrayEquals(rival,Files.readAllBytes(file));QueueFiles.delete(file);QueueFiles.delete(file);
   }
-  @Test void publicationForcesItsFolderAndTheParentOfEachCreatedFolderAndRawParserRefusesAmbiguousDocuments()throws Exception{
-    Path base=root.toAbsolutePath(),file=base.resolve("new/owner/item.json");var observed=new ArrayList<Path>();
+  static List<Path> upFrom(Path folder){var all=new ArrayList<Path>();for(Path p=folder;p!=null;p=p.getParent())all.add(p);return all;}
+  @Test void publicationSyncsEveryAncestorOncePerProcessThenOnlyItsFolderParentAndNewOrUnsyncedFolders()throws Exception{
+    Path base=root.toAbsolutePath(),owner=base.resolve("new/owner"),file=owner.resolve("item.json");var observed=new ArrayList<Path>();var failAt=new Path[1];
+    QueueFiles.LINKED.clear(); // other tests in this JVM share the ancestors
+    Files.createDirectories(base.resolve("new")); // like a folder made by plugin startup: it exists, but its entry was never synced
     try(var disk=mockStatic(QueueFiles.class,CALLS_REAL_METHODS)){
-      disk.when(()->QueueFiles.force(any())).thenAnswer(call->{observed.add(call.getArgument(0));return null;});QueueFiles.write(file,"bytes".getBytes(),false);
-      assertEquals(List.of(base.resolve("new/owner"),base.resolve("new"),base),observed);assertArrayEquals("bytes".getBytes(),Files.readAllBytes(file));
-      observed.clear();QueueFiles.write(file,"next".getBytes(),true);assertEquals(List.of(base.resolve("new/owner"),base.resolve("new")),observed);assertArrayEquals("next".getBytes(),Files.readAllBytes(file));
-      try(var left=Files.list(file.getParent())){assertEquals(List.of(file),left.toList());}
+      disk.when(()->QueueFiles.force(any())).thenAnswer(call->{Path folder=call.getArgument(0);if(folder.equals(failAt[0]))throw new IOException("sync failed");observed.add(folder);return null;});
+      QueueFiles.write(file,"bytes".getBytes(),false);assertEquals(upFrom(owner),observed);
+      observed.clear();QueueFiles.write(file,"next".getBytes(),true);assertEquals(List.of(owner,base.resolve("new")),observed);assertArrayEquals("next".getBytes(),Files.readAllBytes(file));
+      try(var left=Files.list(owner)){assertEquals(List.of(file),left.toList());}
+      Path deep=owner.resolve("a/b/c"),nested=deep.resolve("item.json");
+      failAt[0]=owner.resolve("a");assertThrows(IOException.class,()->QueueFiles.write(nested,"bytes".getBytes(),true));
+      failAt[0]=null;observed.clear();QueueFiles.write(nested,"bytes".getBytes(),true);assertEquals(List.of(deep,owner.resolve("a/b"),owner.resolve("a"),owner),observed);
+      observed.clear();QueueFiles.write(nested,"bytes".getBytes(),true);assertEquals(List.of(deep,owner.resolve("a/b")),observed);
+      Files.delete(nested);for(Path gone:List.of(deep,owner.resolve("a/b"),owner.resolve("a")))Files.delete(gone);
+      observed.clear();QueueFiles.write(nested,"bytes".getBytes(),true);assertEquals(List.of(deep,owner.resolve("a/b"),owner.resolve("a"),owner),observed);
     }
-    Path drive=base.getRoot().resolve("recycler-missing-"+UUID.randomUUID());
-    assertEquals(List.of(drive.resolve("a"),drive,base.getRoot()),QueueFiles.syncDirectories(drive.resolve("a")));
-    assertEquals(List.of(base,base.getParent()),QueueFiles.syncDirectories(base));assertEquals(List.of(base.getRoot()),QueueFiles.syncDirectories(base.getRoot()));
+    assertEquals(List.of(),QueueFiles.unsyncedEntries(base.getRoot()));
     for(String source:List.of("null","[]","broken","{\"a\":1,\"a\":2}","{\"a\":[]} {}"))assertThrows(IOException.class,()->QueueJson.parse(source));
     assertTrue(QueueJson.parse("{\"a\":[{\"kept\":null}]} ").getAsJsonArray("a").get(0).getAsJsonObject().get("kept").isJsonNull());
   }

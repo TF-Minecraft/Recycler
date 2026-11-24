@@ -11,16 +11,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/** Acknowledges file contents and every directory link this write changed; immutable creates cannot clobber. */
+/** Acknowledges file contents and every directory link not yet synced by this process; immutable creates cannot clobber. */
 public final class QueueFiles {
     private QueueFiles() {}
     /** Paths whose latest write in this process finished every sync; only these may skip an identical rewrite. */
     private static final Set<Path> PUBLISHED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** Folders whose entry this process has synced, by forcing their parent. */
+    static final Set<Path> LINKED = java.util.concurrent.ConcurrentHashMap.newKeySet();
     static boolean published(Path file) { return PUBLISHED.contains(file.toAbsolutePath()); }
     public static void write(Path file, byte[] data, boolean replace) throws IOException {
         PUBLISHED.remove(file.toAbsolutePath());
         Path folder = file.toAbsolutePath().getParent();
-        List<Path> changed = syncDirectories(folder);
+        List<Path> entries = unsyncedEntries(folder);
         Files.createDirectories(folder);
         Path pending = Files.createTempFile(folder, "recycler-", ".tmp");
         try {
@@ -32,21 +34,22 @@ public final class QueueFiles {
             if (replace) Files.move(pending, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             else try { Files.createLink(file, pending); }
             catch (UnsupportedOperationException ex) { throw new IOException("No-clobber publication unavailable", ex); }
-            for (Path parent : changed) force(parent);
+            force(folder);
+            for (Path entry : entries) { force(entry.getParent()); LINKED.add(entry); }
         } finally { Files.deleteIfExists(pending); }
         PUBLISHED.add(file.toAbsolutePath());
     }
     /**
-     * The file's folder and its parent (a folder left by an interrupted write is re-acknowledged), then the parent of
-     * each further folder about to be created, deepest first. Older ancestors are untouched.
+     * Folders whose entry needs its parent synced, deepest first: the file's folder always, then each ancestor that is
+     * about to be created or that this process has not synced yet (created at startup, or left by a failed write).
      */
-    static List<Path> syncDirectories(Path folder) {
-        List<Path> folders = new ArrayList<>(List.of(folder));
-        for (Path child = folder; !child.equals(child.getRoot()); child = child.getParent()) {
-            folders.add(child.getParent());
-            if (Files.exists(child.getParent())) break;
+    static List<Path> unsyncedEntries(Path folder) {
+        List<Path> entries = new ArrayList<>();
+        for (Path entry = folder; !entry.equals(entry.getRoot()); entry = entry.getParent()) {
+            if (!Files.exists(entry)) LINKED.remove(entry);
+            if (entry.equals(folder) || !LINKED.contains(entry)) entries.add(entry);
         }
-        return folders;
+        return entries;
     }
     public static void delete(Path file) throws IOException {
         PUBLISHED.remove(file.toAbsolutePath());
